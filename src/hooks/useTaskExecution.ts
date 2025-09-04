@@ -39,7 +39,8 @@ const generateSummaryFromOutput = (taskData: any): string => {
 }
 
 const createStepMessage = (step: any, stepNumber: number): ChatMessage => {
-  const stepDescription = step.evaluation_previous_goal || step.next_goal || 'Performing action'
+  // Handle both old and new step formats
+  const stepDescription = step.evaluation_previous_goal || step.evaluationPreviousGoal || step.next_goal || step.nextGoal || 'Performing action'
   
   // Create a more concise URL display
   let urlDisplay = ''
@@ -58,7 +59,7 @@ const createStepMessage = (step: any, stepNumber: number): ChatMessage => {
   }
   
   return {
-    id: `step-${step.id}-${Date.now()}`,
+    id: `step-${step.id || stepNumber}-${Date.now()}`,
     type: 'ai',
     content: `**Step ${stepNumber}**\n${stepDescription}${urlDisplay}`,
     timestamp: new Date()

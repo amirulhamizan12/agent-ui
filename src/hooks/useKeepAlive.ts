@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useTask } from '@/context/TaskContext'
+import { browserUseApi } from '@/lib/browserUseApi'
 
 export function useKeepAlive() {
   const { state } = useTask()
@@ -34,16 +35,11 @@ export function useKeepAlive() {
           // For now, we'll just handle this silently
         }
 
-        // Send keep-alive ping to server (optional)
+        // Send keep-alive ping to Browser Use API (optional)
         try {
-          await fetch(`/api/task/keepalive/${state.taskId}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              timestamp: new Date().toISOString(),
-              lastActivity: lastActivityRef.current
-            })
-          })
+          // Since Browser Use API doesn't have a specific keep-alive endpoint,
+          // we can use the task status check as a keep-alive mechanism
+          await browserUseApi.getTaskStatus(state.taskId)
         } catch (error) {
           // Keep-alive ping failed - silently ignore
         }

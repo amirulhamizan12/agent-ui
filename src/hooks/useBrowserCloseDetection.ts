@@ -1,12 +1,13 @@
 import { useEffect, useRef } from 'react'
 import { useTask } from '@/context/TaskContext'
+import { browserUseApi } from '@/lib/browserUseApi'
 
 export function useBrowserCloseDetection() {
   const { state } = useTask()
   const hasStoppedRef = useRef(false)
 
   useEffect(() => {
-    const handleBeforeUnload = () => {
+    const handleBeforeUnload = async () => {
       // Only send stop request if task is running and we haven't already stopped it
       if (state.isRunning && state.taskId && !hasStoppedRef.current) {
         
@@ -17,8 +18,54 @@ export function useBrowserCloseDetection() {
           timestamp: new Date().toISOString()
         })
         
-        // Send stop request to our API
-        navigator.sendBeacon(`/api/task/stop/${state.taskId}`, stopData)
+        // Send stop request to Browser Use API using sendBeacon
+        // Note: sendBeacon doesn't support custom headers, so we'll use a different approach
+        try {
+          // Use fetch with keepalive for better reliability during page unload
+          // Try to get sessionId first, then delete session
+          fetch(`https://api.browser-use.com/api/v2/tasks/${state.taskId}`, {
+            method: 'GET',
+            headers: {
+              'X-Browser-Use-API-Key': process.env.NEXT_PUBLIC_BROWSER_USE_API_KEY || '',
+              'Content-Type': 'application/json',
+            },
+            keepalive: true
+          })
+          .then(response => response.json())
+          .then(data => {
+            if (data.sessionId) {
+              // Delete the session for more effective stopping
+              fetch(`https://api.browser-use.com/api/v2/sessions/${data.sessionId}`, {
+                method: 'DELETE',
+                headers: {
+                  'X-Browser-Use-API-Key': process.env.NEXT_PUBLIC_BROWSER_USE_API_KEY || '',
+                  'Content-Type': 'application/json',
+                },
+                keepalive: true
+              }).catch(() => {
+                // Ignore errors during page unload
+              })
+            } else {
+              // Fallback to task update
+              fetch(`https://api.browser-use.com/api/v2/tasks/${state.taskId}`, {
+                method: 'PATCH',
+                headers: {
+                  'X-Browser-Use-API-Key': process.env.NEXT_PUBLIC_BROWSER_USE_API_KEY || '',
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ action: 'stop' }),
+                keepalive: true
+              }).catch(() => {
+                // Ignore errors during page unload
+              })
+            }
+          })
+          .catch(() => {
+            // Ignore errors during page unload
+          })
+        } catch (error) {
+          // Ignore errors during page unload
+        }
         
         hasStoppedRef.current = true
       }
