@@ -82,9 +82,8 @@ export function useTaskExecution() {
   // Start polling when we have a taskId and the task is running
   useEffect(() => {
     if (state.taskId && state.isRunning) {
-      console.log('🚀 Task started, beginning polling for taskId:', state.taskId)
       lastStepCountRef.current = 0 // Reset step count for new task
-      
+
       // Add task start message to chat
       const startMessage: ChatMessage = {
         id: `start-${Date.now()}`,
@@ -93,11 +92,10 @@ export function useTaskExecution() {
         timestamp: new Date()
       }
       dispatch({ type: 'ADD_CHAT_MESSAGE', message: startMessage })
-      
+
       startPolling(state.taskId)
     } else if (!state.isRunning && pollingIntervalRef.current) {
       // Clear polling if task is no longer running
-      console.log('⏹️ Task stopped, clearing polling')
       clearPolling()
     }
 
@@ -110,39 +108,10 @@ export function useTaskExecution() {
 
   const startPolling = (taskId: string) => {
     const pollInterval = 3000 // Poll every 3 seconds
-    
-    console.log('🔄 Starting polling for taskId:', taskId)
 
     pollingIntervalRef.current = setInterval(async () => {
       try {
-        const pollTimestamp = new Date().toISOString()
-        console.log('📡 [FRONTEND POLLING] Starting poll for task:', {
-          taskId,
-          timestamp: pollTimestamp,
-          pollInterval: '3000ms'
-        })
-        
         const taskData = await browserUseApi.getTaskStatus(taskId)
-        
-        console.log('📥 [FRONTEND POLLING] Received response:', {
-          taskId,
-          timestamp: new Date().toISOString(),
-          responseReceived: !!taskData
-        })
-        
-        console.log('📊 Received task data:', {
-          status: taskData.status,
-          steps: taskData.steps?.length || 0,
-          live_url: taskData.live_url,
-          live_url_type: typeof taskData.live_url,
-          live_url_available: !!taskData.live_url,
-          public_share_url: taskData.public_share_url
-        })
-
-        // Log when live_url becomes available
-        if (taskData.live_url && typeof taskData.live_url === 'string' && taskData.live_url.length > 0) {
-          console.log('🎥 Live URL now available:', taskData.live_url)
-        }
         
         // Check for new steps and add them to chat
         const currentSteps = taskData.steps || []
@@ -208,12 +177,6 @@ export function useTaskExecution() {
         }
 
       } catch (error) {
-        console.error('❌ [FRONTEND POLLING] Error polling task status:', {
-          taskId,
-          timestamp: new Date().toISOString(),
-          error: error instanceof Error ? error.message : error,
-          errorType: error instanceof Error ? error.constructor.name : typeof error
-        })
         // Continue polling unless it's a persistent error
       }
     }, pollInterval)
@@ -221,7 +184,6 @@ export function useTaskExecution() {
 
   const clearPolling = () => {
     if (pollingIntervalRef.current) {
-      console.log('⏹️ Clearing polling interval')
       clearInterval(pollingIntervalRef.current)
       pollingIntervalRef.current = null
     }

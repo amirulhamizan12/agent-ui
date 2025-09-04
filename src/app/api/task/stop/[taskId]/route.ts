@@ -8,12 +8,6 @@ export async function PUT(
     const { taskId } = params
     const timestamp = new Date().toISOString()
 
-    console.log('🛑 [STOP TASK API] Request received:', {
-      timestamp,
-      taskId,
-      method: 'PUT',
-      userAgent: request.headers.get('user-agent')?.substring(0, 50) + '...'
-    })
 
     const browserUseApiKey = process.env.BROWSER_USE_API_KEY
     if (!browserUseApiKey) {
@@ -25,7 +19,6 @@ export async function PUT(
     }
 
     // Call Browser Use API to stop the task
-    console.log('🔌 [STOP TASK API] Calling Browser Use API to stop task:', taskId)
     const response = await fetch(`https://api.browser-use.com/api/v1/stop-task?task_id=${taskId}`, {
       method: 'PUT',
       headers: {
@@ -33,8 +26,6 @@ export async function PUT(
         'Content-Type': 'application/json',
       },
     })
-
-    console.log('📡 [STOP TASK API] Browser Use API Response Status:', response.status, response.statusText)
 
     if (!response.ok) {
       const errorData = await response.text()
@@ -50,7 +41,6 @@ export async function PUT(
       )
     }
 
-    console.log('✅ [STOP TASK API] Task stopped successfully:', taskId)
     
     return NextResponse.json({ 
       message: 'Task stopped successfully',

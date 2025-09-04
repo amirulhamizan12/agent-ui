@@ -1,23 +1,3 @@
-interface BrowserUseTask {
-  id: string
-  task: string
-  status: 'created' | 'running' | 'finished' | 'stopped' | 'paused' | 'failed'
-  output: string | null
-  created_at: string
-  finished_at: string | null
-  steps: BrowserUseStep[]
-  output_files: string[]
-  live_url: string | null
-  public_share_url: string | null
-}
-
-interface BrowserUseStep {
-  id: string
-  step: number
-  evaluation_previous_goal: string
-  next_goal: string
-  url: string
-}
 
 interface StartTaskRequest {
   prompt: string

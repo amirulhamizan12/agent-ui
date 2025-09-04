@@ -22,13 +22,6 @@ export async function POST(request: NextRequest) {
     // Use the custom prompt directly
     const task = prompt
 
-    console.log('🎯 Task Configuration:', {
-      taskType: 'custom-prompt',
-      prompt: prompt.substring(0, 100) + '...',
-      maxSteps: 150,
-      llmModel: 'gemini-2.5-flash'
-    })
-
     // Prepare the request payload
     const requestPayload = {
       task,
@@ -46,21 +39,6 @@ export async function POST(request: NextRequest) {
       structured_output_json: null // No structured output for custom prompts
     }
 
-    console.log('🚀 Browser Use API Request:', {
-      url: 'https://api.browser-use.com/api/v1/run-task',
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${browserUseApiKey?.substring(0, 10)}...`,
-        'Content-Type': 'application/json',
-      },
-      payload: {
-        ...requestPayload,
-        task: `${task.substring(0, 200)}...`, // Truncated for readability
-        structured_output_json: requestPayload.structured_output_json ? `JSON STRING (${JSON.stringify(requestPayload.structured_output_json).length} chars)` : 'NULL'
-      }
-    })
-
-    console.log('📝 Full Task Prompt:', task)
 
     // Call Browser Use API to start the task
     const response = await fetch('https://api.browser-use.com/api/v1/run-task', {
@@ -72,7 +50,6 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(requestPayload),
     })
 
-    console.log('📡 Browser Use API Response Status:', response.status, response.statusText)
 
     if (!response.ok) {
       const errorData = await response.text()
@@ -98,11 +75,6 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json()
-    console.log('✅ Browser Use API Success Response:', {
-      taskId: data.id,
-      status: data.status || 'created',
-      hasLiveUrl: !!data.live_url
-    })
     
     return NextResponse.json({ 
       taskId: data.id,

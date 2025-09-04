@@ -9,7 +9,6 @@ export function useBrowserCloseDetection() {
     const handleBeforeUnload = () => {
       // Only send stop request if task is running and we haven't already stopped it
       if (state.isRunning && state.taskId && !hasStoppedRef.current) {
-        console.log('🚪 Browser closing, sending stop request for task:', state.taskId)
         
         // Use sendBeacon to reliably send the stop request even when page is unloading
         const stopData = JSON.stringify({
@@ -28,7 +27,6 @@ export function useBrowserCloseDetection() {
     const handleVisibilityChange = () => {
       // If page becomes hidden and task is running, consider stopping it
       if (document.hidden && state.isRunning && state.taskId && !hasStoppedRef.current) {
-        console.log('👁️ Page hidden, task may need to be stopped:', state.taskId)
         // Note: We don't automatically stop here as user might just switch tabs
         // But we could implement a timeout mechanism if needed
       }

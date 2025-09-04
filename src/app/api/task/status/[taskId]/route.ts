@@ -9,13 +9,6 @@ export async function GET(
     const timestamp = new Date().toISOString()
     const requestUrl = request.url
 
-    console.log('🎯 [TASK STATUS API] Request received:', {
-      timestamp,
-      taskId,
-      requestUrl,
-      method: 'GET',
-      userAgent: request.headers.get('user-agent')?.substring(0, 50) + '...'
-    })
 
     const browserUseApiKey = process.env.BROWSER_USE_API_KEY
     if (!browserUseApiKey) {
@@ -30,9 +23,8 @@ export async function GET(
     // In a real implementation, this would be stored in a database or cache
     // For now, we'll implement a simple check
     const stopRequested = false // This would be checked against your stop request cache
-    
+
     if (stopRequested) {
-      console.log('🛑 [TASK STATUS API] Task stop requested, returning stopped status')
       return NextResponse.json({
         id: taskId,
         status: 'stopped',
@@ -47,7 +39,6 @@ export async function GET(
     }
 
     // Get task status from Browser Use API
-    console.log('🔌 [TASK STATUS API] Calling Browser Use API for task:', taskId)
     const response = await fetch(`https://api.browser-use.com/api/v1/task/${taskId}`, {
       headers: {
         'Authorization': `Bearer ${browserUseApiKey}`,
@@ -64,10 +55,6 @@ export async function GET(
     }
 
     const data = await response.json()
-    console.log('✅ Browser Use API response:', data)
-
-    // Log the raw data for debugging
-    console.log('🔍 Raw Browser Use API data:', JSON.stringify(data, null, 2))
 
     // Prepare response
     const responseData = {
@@ -81,15 +68,6 @@ export async function GET(
       live_url: data.live_url,
       public_share_url: data.public_share_url
     }
-
-    console.log('📤 [TASK STATUS API] Sending response to frontend:', {
-      taskId,
-      status: responseData.status,
-      stepsCount: responseData.steps.length,
-      hasLiveUrl: !!responseData.live_url,
-      hasPublicShare: !!responseData.public_share_url,
-      outputFilesCount: responseData.output_files.length
-    })
 
     // Return Browser Use API response directly (no transformation needed)
     return NextResponse.json(responseData)

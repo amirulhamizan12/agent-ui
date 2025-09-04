@@ -30,9 +30,8 @@ export function useKeepAlive() {
         
         // If user has been inactive for more than 5 minutes, consider stopping the task
         if (timeSinceLastActivity > 5 * 60 * 1000) {
-          console.log('⏰ User inactive for 5+ minutes, task may need cleanup')
           // In a real implementation, you might want to pause or stop the task
-          // For now, we'll just log this event
+          // For now, we'll just handle this silently
         }
 
         // Send keep-alive ping to server (optional)
@@ -46,7 +45,7 @@ export function useKeepAlive() {
             })
           })
         } catch (error) {
-          console.log('Keep-alive ping failed:', error)
+          // Keep-alive ping failed - silently ignore
         }
       }, 30 * 1000) // Ping every 30 seconds
     }

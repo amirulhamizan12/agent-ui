@@ -21,10 +21,9 @@ export default function ChatInterface() {
 
     setIsStopping(true)
     try {
-      console.log('🛑 Stopping task from chat interface:', state.taskId)
       await browserUseApi.stopTask(state.taskId)
       dispatch({ type: 'STOP_TASK' })
-      
+
       // Add a system message about stopping
       const stopMessage: ChatMessage = {
         id: Date.now().toString(),
@@ -33,8 +32,7 @@ export default function ChatInterface() {
         timestamp: new Date()
       }
       dispatch({ type: 'ADD_CHAT_MESSAGE', message: stopMessage })
-      
-      console.log('✅ Task stopped successfully from chat interface')
+
     } catch (error) {
       console.error('❌ Failed to stop task from chat interface:', error)
     } finally {
@@ -84,14 +82,6 @@ export default function ChatInterface() {
       }
     }, 0)
 
-    // Add AI response message
-    const aiMessage: ChatMessage = {
-      id: (Date.now() + 1).toString(),
-      type: 'ai',
-      content: `I will help you with that task. Let me break it down into steps and execute it for you.`,
-      timestamp: new Date()
-    }
-    dispatch({ type: 'ADD_CHAT_MESSAGE', message: aiMessage })
 
     // Start the automation task
     try {
@@ -125,7 +115,7 @@ export default function ChatInterface() {
       })
 
     } catch (error) {
-      console.error('Failed to start task:', error)
+      console.error('❌ Failed to start task:', error)
       const errorMessage: ChatMessage = {
         id: (Date.now() + 2).toString(),
         type: 'ai',
