@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { MessageSquare, Settings } from 'lucide-react'
 import ChatInterface from '@/components/ChatInterface'
 import BrowserView from '@/components/BrowserView'
 import TaskManager from '@/components/TaskManager'
@@ -16,46 +17,48 @@ function AppContent() {
   useKeepAlive()
 
   return (
-    <div className="flex flex-col h-screen bg-dark-100">
-      {/* Tab Navigation */}
-      <div className="flex border-b border-dark-300">
+    <div className="flex h-screen bg-dark-100">
+      {/* Left Sidebar Navigation */}
+      <div className="flex flex-col border-r border-dark-300 bg-dark-200 w-16 flex-shrink-0">
         <button
           onClick={() => setActiveTab('chat')}
-          className={`px-6 py-3 text-sm font-medium transition-colors ${
+          className={`p-4 transition-colors ${
             activeTab === 'chat'
-              ? 'text-white border-b-2 border-blue-500 bg-dark-200'
-              : 'text-gray-400 hover:text-white hover:bg-dark-200'
+              ? 'text-white border-r-2 border-blue-500 bg-dark-300'
+              : 'text-gray-400 hover:text-white hover:bg-dark-300'
           }`}
         >
-          Chat Interface
+          <MessageSquare className="w-5 h-5" />
         </button>
         <button
           onClick={() => setActiveTab('tasks')}
-          className={`px-6 py-3 text-sm font-medium transition-colors ${
+          className={`p-4 transition-colors ${
             activeTab === 'tasks'
-              ? 'text-white border-b-2 border-blue-500 bg-dark-200'
-              : 'text-gray-400 hover:text-white hover:bg-dark-200'
+              ? 'text-white border-r-2 border-blue-500 bg-dark-300'
+              : 'text-gray-400 hover:text-white hover:bg-dark-300'
           }`}
         >
-          Task Manager (New API)
+          <Settings className="w-5 h-5" />
         </button>
       </div>
 
-      {/* Tab Content */}
-      {activeTab === 'chat' ? (
-        <div className="flex flex-col lg:flex-row flex-1">
-          <div className="w-full lg:w-[38%]">
-            <ChatInterface />
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col">
+        {activeTab === 'chat' ? (
+          <div className="flex flex-col lg:flex-row flex-1">
+            <div className="w-full lg:w-[38%]">
+              <ChatInterface />
+            </div>
+            <div className="w-full lg:w-[62%]">
+              <BrowserView />
+            </div>
           </div>
-          <div className="w-full lg:w-[62%]">
-            <BrowserView />
+        ) : (
+          <div className="flex-1 overflow-auto">
+            <TaskManager />
           </div>
-        </div>
-      ) : (
-        <div className="flex-1 overflow-auto">
-          <TaskManager />
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }

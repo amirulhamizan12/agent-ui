@@ -1,14 +1,14 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Monitor, Image, ExternalLink, Play, Pause, Square, RefreshCw, ChevronRight, X, Globe } from 'lucide-react'
+import { Monitor, Image, ExternalLink, Play, Pause, Square, RefreshCw, ChevronRight, X, Globe, StopCircle } from 'lucide-react'
 import { useTask } from '@/context/TaskContext'
 import { browserUseApi } from '@/lib/browserUseApi'
 import { useSessionManagement } from '@/hooks/useSessionManagement'
 
 export default function BrowserView() {
   const { state } = useTask()
-  const { sessionStatus, sessionId, sessionLiveUrl } = useSessionManagement()
+  const { sessionStatus, sessionId, sessionLiveUrl, stopSession } = useSessionManagement()
   const [isLive, setIsLive] = useState(false)
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
   const [showLiveView, setShowLiveView] = useState(false)
@@ -96,6 +96,18 @@ export default function BrowserView() {
             </div>
           </div>
           <div className="flex items-center space-x-2">
+            {/* Stop Session Button */}
+            {sessionId && sessionStatus === 'active' && (
+              <button
+                onClick={stopSession}
+                className="flex items-center space-x-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition-colors"
+                title="Stop and delete current session"
+              >
+                <StopCircle className="w-4 h-4" />
+                <span className="text-sm font-medium">Stop Session</span>
+              </button>
+            )}
+            
             {/* Live URL Link - Prominent in header */}
             {liveUrl && (
               <a
@@ -117,12 +129,6 @@ export default function BrowserView() {
               >
                 {showLiveView ? 'Show Steps' : 'Show Live'}
               </button>
-            )}
-            {sessionId && (
-              <div className="flex items-center space-x-2 bg-blue-500/20 text-blue-400 px-3 py-1 rounded">
-                <Globe className="w-3 h-3" />
-                <span className="text-sm">Session Active</span>
-              </div>
             )}
             {isLive && (
               <div className="flex items-center space-x-2 bg-black/50 text-white px-3 py-1 rounded">
