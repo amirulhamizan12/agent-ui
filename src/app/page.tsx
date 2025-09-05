@@ -26,7 +26,7 @@ function AppContent() {
           <div className="relative group">
             <button
               onClick={() => setActiveTab('chat')}
-              className={`relative w-12 h-12 rounded-2xl transition-all duration-200 flex items-center justify-center group ${
+              className={`relative w-11 h-11 rounded-2xl transition-all duration-200 flex items-center justify-center group ${
                 activeTab === 'chat'
                   ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/25'
                   : 'bg-dark-300 text-gray-400 hover:bg-orange-500 hover:text-white hover:rounded-xl'
@@ -40,7 +40,7 @@ function AppContent() {
           <div className="relative group">
             <button
               onClick={() => setActiveTab('tasks')}
-              className={`relative w-12 h-12 rounded-2xl transition-all duration-200 flex items-center justify-center group ${
+              className={`relative w-11 h-11 rounded-2xl transition-all duration-200 flex items-center justify-center group ${
                 activeTab === 'tasks'
                   ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/25'
                   : 'bg-dark-300 text-gray-400 hover:bg-orange-500 hover:text-white hover:rounded-xl'
