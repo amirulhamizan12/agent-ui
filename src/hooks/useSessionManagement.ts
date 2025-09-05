@@ -57,7 +57,7 @@ export function useSessionManagement() {
 
       throw error
     }
-  }, [state.sessionStatus, dispatch])
+  }, [state.sessionStatus, state.sessionId, dispatch])
 
   const stopSession = useCallback(async () => {
     if (!state.sessionId) return

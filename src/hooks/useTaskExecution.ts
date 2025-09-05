@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import { useTask } from '@/context/TaskContext'
 import { browserUseApi } from '@/lib/browserUseApi'
 import { ChatMessage } from '@/context/TaskContext'
@@ -19,9 +19,7 @@ The automation task has been completed with all requested actions performed. The
 *Task completed at ${new Date().toLocaleDateString()}*`
 }
 
-
-
-const generateSummaryFromOutput = (taskData: any): string => {
+const generateSummaryFromOutput = (taskData: { output?: string | null }): string => {
   // Try to parse structured output
   if (taskData.output) {
     try {
@@ -38,7 +36,7 @@ const generateSummaryFromOutput = (taskData: any): string => {
   return generateMockSummary('the requested task')
 }
 
-const createStepMessage = (step: any, stepNumber: number): ChatMessage => {
+const createStepMessage = (step: { evaluation_previous_goal?: string; evaluationPreviousGoal?: string; next_goal?: string; nextGoal?: string; url?: string; id?: string }, stepNumber: number): ChatMessage => {
   // Handle both old and new step formats
   const stepDescription = step.evaluation_previous_goal || step.evaluationPreviousGoal || step.next_goal || step.nextGoal || 'Performing action'
   
@@ -80,34 +78,7 @@ export function useTaskExecution() {
     }
   }, [])
 
-  // Start polling when we have a taskId and the task is running
-  useEffect(() => {
-    if (state.taskId && state.isRunning) {
-      lastStepCountRef.current = 0 // Reset step count for new task
-
-      // Add task start message to chat
-      const startMessage: ChatMessage = {
-        id: `start-${Date.now()}`,
-        type: 'ai',
-        content: '🚀 **Starting Automation Task**\n\nI\'m now executing your request. You\'ll see each step as it happens below.',
-        timestamp: new Date()
-      }
-      dispatch({ type: 'ADD_CHAT_MESSAGE', message: startMessage })
-
-      startPolling(state.taskId)
-    } else if (!state.isRunning && pollingIntervalRef.current) {
-      // Clear polling if task is no longer running
-      clearPolling()
-    }
-
-    return () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current)
-      }
-    }
-  }, [state.taskId, state.isRunning])
-
-  const startPolling = (taskId: string) => {
+  const startPolling = useCallback((taskId: string) => {
     const pollInterval = 3000 // Poll every 3 seconds
 
     pollingIntervalRef.current = setInterval(async () => {
@@ -121,7 +92,7 @@ export function useTaskExecution() {
         if (currentStepCount > lastStepCountRef.current) {
           // New steps detected, add them to chat
           const newSteps = currentSteps.slice(lastStepCountRef.current)
-          newSteps.forEach((step: any, index: number) => {
+          newSteps.forEach((step: { evaluation_previous_goal?: string; evaluationPreviousGoal?: string; next_goal?: string; nextGoal?: string; url?: string; id?: string }, index: number) => {
             const stepNumber = lastStepCountRef.current + index + 1
             const stepMessage = createStepMessage(step, stepNumber)
             dispatch({ type: 'ADD_CHAT_MESSAGE', message: stepMessage })
@@ -181,7 +152,34 @@ export function useTaskExecution() {
         // Continue polling unless it's a persistent error
       }
     }, pollInterval)
-  }
+  }, [dispatch])
+
+  // Start polling when we have a taskId and the task is running
+  useEffect(() => {
+    if (state.taskId && state.isRunning) {
+      lastStepCountRef.current = 0 // Reset step count for new task
+
+      // Add task start message to chat
+      const startMessage: ChatMessage = {
+        id: `start-${Date.now()}`,
+        type: 'ai',
+        content: '🚀 **Starting Automation Task**\n\nI\'m now executing your request. You\'ll see each step as it happens below.',
+        timestamp: new Date()
+      }
+      dispatch({ type: 'ADD_CHAT_MESSAGE', message: startMessage })
+
+      startPolling(state.taskId)
+    } else if (!state.isRunning && pollingIntervalRef.current) {
+      // Clear polling if task is no longer running
+      clearPolling()
+    }
+
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current)
+      }
+    }
+  }, [state.taskId, state.isRunning, dispatch, startPolling])
 
   const clearPolling = () => {
     if (pollingIntervalRef.current) {

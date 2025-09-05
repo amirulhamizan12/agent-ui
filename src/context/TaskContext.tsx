@@ -43,7 +43,7 @@ export interface TaskState {
   sessionStatus: 'none' | 'creating' | 'active' | 'stopped'
   sessionLiveUrl: string | null
   taskStatus: string | null
-  output: any | null
+  output: string | null
   liveUrl: string | null
   publicShareUrl: string | null
   chatMessages: ChatMessage[]
@@ -52,7 +52,7 @@ export interface TaskState {
 
 export type TaskAction =
   | { type: 'START_TASK'; taskId: string; sessionId?: string }
-  | { type: 'UPDATE_TASK_STATUS'; taskData: any }
+  | { type: 'UPDATE_TASK_STATUS'; taskData: { taskStatus: string; steps: TaskStep[]; output: string | null; liveUrl: string | null; finishedAt: string | null; publicShareUrl: string | null } }
   | { type: 'COMPLETE_TASK'; summary: string }
   | { type: 'STOP_TASK' }
   | { type: 'RESET_TASK' }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useBrowserUseApi } from '@/hooks/useBrowserUseApi'
 import { TaskItem } from '@/lib/browserUseApi'
 
@@ -8,16 +8,16 @@ export default function TaskManager() {
   const { listTasks, getTask, stopTask, pauseTask, resumeTask, deleteSession, loading, error } = useBrowserUseApi()
   const [tasks, setTasks] = useState<TaskItem[]>([])
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null)
-  const [taskDetails, setTaskDetails] = useState<any>(null)
+  const [taskDetails, setTaskDetails] = useState<{ steps?: { length: number } } | null>(null)
 
-  const loadTasks = async () => {
+  const loadTasks = useCallback(async () => {
     try {
       const response = await listTasks({ pageSize: 10 })
       setTasks(response.items)
     } catch (err) {
       console.error('Failed to load tasks:', err)
     }
-  }
+  }, [listTasks])
 
   const loadTaskDetails = async (taskId: string) => {
     try {
@@ -65,7 +65,7 @@ export default function TaskManager() {
 
   useEffect(() => {
     loadTasks()
-  }, [])
+  }, [loadTasks])
 
   const getStatusColor = (status: string) => {
     switch (status) {

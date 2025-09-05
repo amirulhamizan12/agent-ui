@@ -44,7 +44,7 @@ interface TaskItem {
   startedAt: string
   isScheduled: boolean
   finishedAt: string | null
-  metadata: Record<string, any>
+  metadata: Record<string, unknown>
   output: string | null
   browserUseVersion: string | null
   isSuccess: boolean | null
@@ -83,7 +83,7 @@ interface GetTaskResponse {
   steps: TaskStep[]
   outputFiles: OutputFile[]
   finishedAt: string | null
-  metadata: Record<string, any>
+  metadata: Record<string, unknown>
   output: string | null
   browserUseVersion: string | null
   isSuccess: boolean | null
@@ -111,7 +111,7 @@ interface StartTaskResponse {
 interface TaskStatusResponse {
   id: string
   status: string
-  steps: any[]
+  steps: TaskStep[]
   output: string | null
   created_at: string
   finished_at: string | null
