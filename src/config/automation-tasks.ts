@@ -15,9 +15,6 @@ export interface AppConfig {
   }
 }
 
-
-
-
 // 🎨 APP CONFIGURATION
 // Customize your app's branding, title, and instructions here!
 export const APP_CONFIG: AppConfig = {
@@ -39,8 +36,6 @@ export const APP_CONFIG: AppConfig = {
     tagline: "AI Automation Made Simple"
   }
 }
-
-
 
 export function getAppConfig(): AppConfig {
   return APP_CONFIG

@@ -39,7 +39,9 @@ export function useKeepAlive() {
         try {
           // Since Browser Use API doesn't have a specific keep-alive endpoint,
           // we can use the task status check as a keep-alive mechanism
-          await browserUseApi.getTaskStatus(state.taskId)
+          if (state.taskId) {
+            await browserUseApi.getTaskStatus(state.taskId)
+          }
         } catch (error) {
           // Keep-alive ping failed - silently ignore
         }
