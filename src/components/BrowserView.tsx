@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Monitor, Image, ExternalLink, Play, Pause, Square, RefreshCw, ChevronRight, X, Globe, StopCircle } from 'lucide-react'
+import { Monitor, Image, ExternalLink, Play, ChevronRight, X, StopCircle } from 'lucide-react'
 import { useTask } from '@/context/TaskContext'
 import { browserUseApi } from '@/lib/browserUseApi'
 import { useSessionManagement } from '@/hooks/useSessionManagement'
@@ -38,17 +38,6 @@ export default function BrowserView() {
   const currentStep = state.steps[currentStepIndex]
   const hasScreenshots = state.steps.some(step => step.screenshotUrl)
 
-  const refreshTaskData = async () => {
-    if (state.taskId) {
-      try {
-        console.log('Refreshing task data for taskId:', state.taskId)
-        const taskData = await browserUseApi.getTaskStatus(state.taskId)
-        console.log('Refreshed task data:', taskData)
-      } catch (error) {
-        console.error('Failed to refresh task data:', error)
-      }
-    }
-  }
 
   // Debug logging
   useEffect(() => {
@@ -73,7 +62,7 @@ export default function BrowserView() {
   return (
     <div className="w-full bg-dark-100 flex flex-col h-full lg:h-screen">
       {/* Header */}
-      <div className="bg-dark-200 border-b border-dark-300 px-6 py-4">
+      <div className="px-6 py-4" style={{ backgroundColor: '#1a1a1a' }}>
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Monitor className="w-5 h-5 text-primary" />
@@ -130,15 +119,9 @@ export default function BrowserView() {
                 {showLiveView ? 'Show Steps' : 'Show Live'}
               </button>
             )}
-            {isLive && (
-              <div className="flex items-center space-x-2 bg-black/50 text-white px-3 py-1 rounded">
-                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                <span className="text-sm">Live</span>
-              </div>
-            )}
             {state.steps.length > 0 && !showLiveView && (
-              <div className="flex items-center space-x-2 bg-blue-500/20 text-blue-400 px-3 py-1 rounded">
-                <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+              <div className="flex items-center space-x-2 bg-orange-500/20 text-orange-400 px-3 py-1 rounded">
+                <div className="w-2 h-2 bg-orange-400 rounded-full animate-pulse"></div>
                 <span className="text-sm">Executing</span>
               </div>
             )}
@@ -253,7 +236,7 @@ export default function BrowserView() {
                       className={`absolute top-4 text-white p-2 rounded-lg transition-all duration-200 z-10 shadow-lg hover:shadow-xl ${
                         isStepPanelOpen 
                           ? 'right-4 bg-dark-400 hover:bg-dark-500' 
-                          : 'right-4 bg-blue-600 hover:bg-blue-700 animate-pulse'
+                          : 'right-4 bg-orange-600 hover:bg-orange-700 animate-pulse'
                       }`}
                       title={isStepPanelOpen ? 'Hide step details' : 'Show step details'}
                     >
@@ -337,11 +320,6 @@ export default function BrowserView() {
                      sessionStatus === 'creating' ? 'Setting up your browser session...' :
                      'Start a task to see automation progress'}
                   </p>
-                  {sessionStatus === 'none' && (
-                    <div className="mt-4">
-                      <div className="w-2 h-2 bg-gray-500 rounded-full mx-auto animate-pulse"></div>
-                    </div>
-                  )}
                 </div>
               </div>
             )}
@@ -350,7 +328,7 @@ export default function BrowserView() {
       </div>
 
       {/* Status Bar - Always Visible */}
-      <div className="border-t border-dark-300 bg-dark-200 px-4 lg:px-6 py-3">
+      <div className="px-4 lg:px-6 py-3" style={{ backgroundColor: '#1a1a1a' }}>
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2 lg:space-x-3">
             <div className={`w-2 h-2 rounded-full ${
@@ -359,7 +337,7 @@ export default function BrowserView() {
                 : sessionStatus === 'active' && state.isRunning
                   ? 'bg-green-500 animate-pulse'
                   : sessionStatus === 'active'
-                    ? 'bg-blue-500'
+                    ? 'bg-orange-500'
                     : sessionStatus === 'creating'
                       ? 'bg-yellow-500 animate-pulse'
                       : state.taskStatus === 'running'
@@ -391,7 +369,7 @@ export default function BrowserView() {
             )}
             {state.steps.length > 0 && (
               <div className="text-gray-400 text-xs lg:text-sm">
-                Step {state.steps.length} of {state.steps.length + 1}
+                Step {state.steps.length}
               </div>
             )}
           </div>

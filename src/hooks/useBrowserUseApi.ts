@@ -1,16 +1,17 @@
 import { useState, useCallback } from 'react'
 import { browserUseApi, CreateTaskRequest, GetTaskResponse, ListTasksResponse, UpdateTaskRequest } from '@/lib/browserUseApi'
 
+// ===== STATE MANAGEMENT =====
 export function useBrowserUseApi() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const createTask = useCallback(async (requestData: CreateTaskRequest) => {
+  // ===== API WRAPPER =====
+  const apiCall = useCallback(async <T>(apiFn: () => Promise<T>): Promise<T> => {
     setLoading(true)
     setError(null)
     try {
-      const result = await browserUseApi.createTask(requestData)
-      return result
+      return await apiFn()
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred'
       setError(errorMessage)
@@ -20,88 +21,40 @@ export function useBrowserUseApi() {
     }
   }, [])
 
-  const getTask = useCallback(async (taskId: string) => {
-    setLoading(true)
-    setError(null)
-    try {
-      const result = await browserUseApi.getTask(taskId)
-      return result
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred'
-      setError(errorMessage)
-      throw err
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  // ===== TASK OPERATIONS =====
+  const createTask = useCallback((requestData: CreateTaskRequest) => 
+    apiCall(() => browserUseApi.createTask(requestData)), [apiCall])
 
-  const listTasks = useCallback(async (params?: {
+  const getTask = useCallback((taskId: string) => 
+    apiCall(() => browserUseApi.getTask(taskId)), [apiCall])
+
+  const listTasks = useCallback((params?: {
     pageSize?: number
     pageNumber?: number
     sessionId?: string
     filterBy?: 'started' | 'paused' | 'finished' | 'stopped'
     after?: string
     before?: string
-  }) => {
-    setLoading(true)
-    setError(null)
-    try {
-      const result = await browserUseApi.listTasks(params)
-      return result
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred'
-      setError(errorMessage)
-      throw err
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  }) => apiCall(() => browserUseApi.listTasks(params)), [apiCall])
 
-  const updateTask = useCallback(async (taskId: string, requestData: UpdateTaskRequest) => {
-    setLoading(true)
-    setError(null)
-    try {
-      const result = await browserUseApi.updateTask(taskId, requestData)
-      return result
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred'
-      setError(errorMessage)
-      throw err
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const updateTask = useCallback((taskId: string, requestData: UpdateTaskRequest) => 
+    apiCall(() => browserUseApi.updateTask(taskId, requestData)), [apiCall])
 
-  const stopTask = useCallback(async (taskId: string) => {
-    return updateTask(taskId, { action: 'stop' })
-  }, [updateTask])
+  // ===== TASK ACTIONS =====
+  const stopTask = useCallback((taskId: string) => 
+    updateTask(taskId, { action: 'stop' }), [updateTask])
 
-  const pauseTask = useCallback(async (taskId: string) => {
-    return updateTask(taskId, { action: 'pause' })
-  }, [updateTask])
+  const pauseTask = useCallback((taskId: string) => 
+    updateTask(taskId, { action: 'pause' }), [updateTask])
 
-  const resumeTask = useCallback(async (taskId: string) => {
-    return updateTask(taskId, { action: 'resume' })
-  }, [updateTask])
+  const resumeTask = useCallback((taskId: string) => 
+    updateTask(taskId, { action: 'resume' }), [updateTask])
 
-  const stopTaskAndSession = useCallback(async (taskId: string) => {
-    return updateTask(taskId, { action: 'stop_task_and_session' })
-  }, [updateTask])
+  // ===== SESSION OPERATIONS =====
+  const deleteSession = useCallback((sessionId: string) => 
+    apiCall(() => browserUseApi.deleteSession(sessionId)), [apiCall])
 
-  const deleteSession = useCallback(async (sessionId: string) => {
-    setLoading(true)
-    setError(null)
-    try {
-      await browserUseApi.deleteSession(sessionId)
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred'
-      setError(errorMessage)
-      throw err
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
+  // ===== RETURN API =====
   return {
     loading,
     error,
@@ -112,7 +65,6 @@ export function useBrowserUseApi() {
     stopTask,
     pauseTask,
     resumeTask,
-    stopTaskAndSession,
     deleteSession,
     clearError: () => setError(null)
   }

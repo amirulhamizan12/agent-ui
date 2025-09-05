@@ -281,19 +281,65 @@ class BrowserUseApiClient {
       throw new Error('Browser Use API key not configured. Please set NEXT_PUBLIC_BROWSER_USE_API_KEY environment variable.')
     }
 
-    const response = await fetch(`${this.baseUrl}/sessions/${sessionId}`, {
-      method: 'DELETE',
-      headers: this.getHeaders(),
-    })
-
-    if (!response.ok) {
-      const errorData = await response.text()
-      console.error('Browser Use API Error:', {
-        status: response.status,
-        statusText: response.statusText,
-        errorBody: errorData
+    try {
+      const response = await fetch(`${this.baseUrl}/sessions/${sessionId}`, {
+        method: 'DELETE',
+        headers: this.getHeaders(),
       })
-      throw new Error(`Failed to delete session: ${response.status} ${response.statusText}`)
+
+      if (!response.ok) {
+        // If DELETE method is not supported (405), try alternative approach
+        if (response.status === 405) {
+          console.warn('Session DELETE method not supported, trying alternative approach...')
+          
+          // Try to get tasks for this session and stop them
+          const tasksResponse = await this.listTasks({ sessionId })
+          if (tasksResponse.items.length > 0) {
+            // Stop all tasks in this session
+            for (const task of tasksResponse.items) {
+              if (task.status === 'started' || task.status === 'paused') {
+                try {
+                  await this.updateTask(task.id, { action: 'stop_task_and_session' })
+                } catch (taskError) {
+                  console.warn(`Failed to stop task ${task.id}:`, taskError)
+                }
+              }
+            }
+          }
+          return // Exit successfully after trying alternative approach
+        }
+        
+        const errorData = await response.text()
+        console.error('Browser Use API Error:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorBody: errorData
+        })
+        throw new Error(`Failed to delete session: ${response.status} ${response.statusText}`)
+      }
+    } catch (error) {
+      console.error('Session deletion failed, trying alternative approach:', error)
+      
+      // Fallback: try to get tasks for this session and stop them
+      try {
+        const tasksResponse = await this.listTasks({ sessionId })
+        if (tasksResponse.items.length > 0) {
+          // Stop all tasks in this session
+          for (const task of tasksResponse.items) {
+            if (task.status === 'started' || task.status === 'paused') {
+              try {
+                await this.updateTask(task.id, { action: 'stop_task_and_session' })
+              } catch (taskError) {
+                console.warn(`Failed to stop task ${task.id}:`, taskError)
+              }
+            }
+          }
+        }
+        console.log('Session stopped using alternative method')
+      } catch (fallbackError) {
+        console.error('Alternative session stopping method also failed:', fallbackError)
+        throw error // Re-throw original error if fallback also fails
+      }
     }
   }
 

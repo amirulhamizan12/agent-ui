@@ -3,8 +3,9 @@ import { useTask } from '@/context/TaskContext'
 import { browserUseApi } from '@/lib/browserUseApi'
 import { ChatMessage } from '@/context/TaskContext'
 
-const generateMockSummary = (taskDescription: string = 'the requested task') => {
-  return `# Task Completion Summary
+// ===== UTILITY FUNCTIONS =====
+const generateMockSummary = (taskDescription: string = 'the requested task') => 
+  `# Task Completion Summary
 
 ## Task Overview
 The automation task has been completed successfully. The AI agent has executed the requested actions and gathered relevant information.
@@ -17,14 +18,11 @@ The automation task has been completed successfully. The AI agent has executed t
 The automation task has been completed with all requested actions performed. The results include detailed documentation and captured data.
 
 *Task completed at ${new Date().toLocaleDateString()}*`
-}
 
 const generateSummaryFromOutput = (taskData: { output?: string | null }): string => {
-  // Try to parse structured output
   if (taskData.output) {
     try {
       const parsedOutput = typeof taskData.output === 'string' ? JSON.parse(taskData.output) : taskData.output
-      
       if (parsedOutput.company_overview?.name) {
         return generateMockSummary(`analysis of ${parsedOutput.company_overview.name}`)
       }
@@ -32,15 +30,12 @@ const generateSummaryFromOutput = (taskData: { output?: string | null }): string
       console.log('Could not parse structured output, using generic summary')
     }
   }
-  
   return generateMockSummary('the requested task')
 }
 
 const createStepMessage = (step: { evaluation_previous_goal?: string; evaluationPreviousGoal?: string; next_goal?: string; nextGoal?: string; url?: string; id?: string }, stepNumber: number): ChatMessage => {
-  // Handle both old and new step formats
   const stepDescription = step.evaluation_previous_goal || step.evaluationPreviousGoal || step.next_goal || step.nextGoal || 'Performing action'
   
-  // Create a more concise URL display
   let urlDisplay = ''
   if (step.url) {
     try {
@@ -50,7 +45,6 @@ const createStepMessage = (step: { evaluation_previous_goal?: string; evaluation
       const shortUrl = path.length > 30 ? `${path.substring(0, 30)}...` : path
       urlDisplay = `\n\n${domain}${shortUrl}`
     } catch {
-      // Fallback to original URL if parsing fails
       const shortUrl = step.url.length > 50 ? `${step.url.substring(0, 50)}...` : step.url
       urlDisplay = `\n\n${shortUrl}`
     }
@@ -64,35 +58,31 @@ const createStepMessage = (step: { evaluation_previous_goal?: string; evaluation
   }
 }
 
+// ===== TASK EXECUTION HOOK =====
 export function useTaskExecution() {
   const { state, dispatch } = useTask()
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const lastStepCountRef = useRef<number>(0)
 
-  // Clear polling on unmount
-  useEffect(() => {
-    return () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current)
-      }
+  // ===== POLLING MANAGEMENT =====
+  const clearPolling = useCallback(() => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current)
+      pollingIntervalRef.current = null
     }
   }, [])
 
   const startPolling = useCallback((taskId: string) => {
-    const pollInterval = 3000 // Poll every 3 seconds
-
     pollingIntervalRef.current = setInterval(async () => {
       try {
         const taskData = await browserUseApi.getTaskStatus(taskId)
-        
-        // Check for new steps and add them to chat
         const currentSteps = taskData.steps || []
         const currentStepCount = currentSteps.length
         
+        // ===== HANDLE NEW STEPS =====
         if (currentStepCount > lastStepCountRef.current) {
-          // New steps detected, add them to chat
           const newSteps = currentSteps.slice(lastStepCountRef.current)
-          newSteps.forEach((step: { evaluation_previous_goal?: string; evaluationPreviousGoal?: string; next_goal?: string; nextGoal?: string; url?: string; id?: string }, index: number) => {
+          newSteps.forEach((step: any, index: number) => {
             const stepNumber = lastStepCountRef.current + index + 1
             const stepMessage = createStepMessage(step, stepNumber)
             dispatch({ type: 'ADD_CHAT_MESSAGE', message: stepMessage })
@@ -100,7 +90,7 @@ export function useTaskExecution() {
           lastStepCountRef.current = currentStepCount
         }
 
-        // Update task status and steps
+        // ===== UPDATE TASK STATUS =====
         dispatch({
           type: 'UPDATE_TASK_STATUS',
           taskData: {
@@ -113,12 +103,11 @@ export function useTaskExecution() {
           }
         })
 
-        // Handle task completion
+        // ===== HANDLE TASK COMPLETION =====
         if (taskData.status === 'finished') {
           clearPolling()
           const summary = generateSummaryFromOutput(taskData)
           
-          // Add completion message to chat
           const completionMessage: ChatMessage = {
             id: `completion-${Date.now()}`,
             type: 'ai',
@@ -126,15 +115,13 @@ export function useTaskExecution() {
             timestamp: new Date()
           }
           dispatch({ type: 'ADD_CHAT_MESSAGE', message: completionMessage })
-          
           dispatch({ type: 'COMPLETE_TASK', summary })
         }
         
-        // Handle task failure/stop
+        // ===== HANDLE TASK FAILURE/STOP =====
         if (taskData.status === 'failed' || taskData.status === 'stopped') {
           clearPolling()
           
-          // Add failure/stop message to chat
           const statusMessage: ChatMessage = {
             id: `status-${Date.now()}`,
             type: 'system',
@@ -144,22 +131,27 @@ export function useTaskExecution() {
             timestamp: new Date()
           }
           dispatch({ type: 'ADD_CHAT_MESSAGE', message: statusMessage })
-          
           dispatch({ type: 'COMPLETE_TASK', summary: 'Task was stopped or failed.' })
         }
-
       } catch (error) {
         // Continue polling unless it's a persistent error
       }
-    }, pollInterval)
-  }, [dispatch])
+    }, 3000) // Poll every 3 seconds
+  }, [dispatch, clearPolling])
 
-  // Start polling when we have a taskId and the task is running
+  // ===== EFFECTS =====
+  useEffect(() => {
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current)
+      }
+    }
+  }, [])
+
   useEffect(() => {
     if (state.taskId && state.isRunning) {
-      lastStepCountRef.current = 0 // Reset step count for new task
+      lastStepCountRef.current = 0
 
-      // Add task start message to chat
       const startMessage: ChatMessage = {
         id: `start-${Date.now()}`,
         type: 'ai',
@@ -167,10 +159,8 @@ export function useTaskExecution() {
         timestamp: new Date()
       }
       dispatch({ type: 'ADD_CHAT_MESSAGE', message: startMessage })
-
       startPolling(state.taskId)
     } else if (!state.isRunning && pollingIntervalRef.current) {
-      // Clear polling if task is no longer running
       clearPolling()
     }
 
@@ -179,14 +169,7 @@ export function useTaskExecution() {
         clearInterval(pollingIntervalRef.current)
       }
     }
-  }, [state.taskId, state.isRunning, dispatch, startPolling])
-
-  const clearPolling = () => {
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current)
-      pollingIntervalRef.current = null
-    }
-  }
+  }, [state.taskId, state.isRunning, dispatch, startPolling, clearPolling])
 
   return null
 } 

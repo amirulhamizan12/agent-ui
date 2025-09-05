@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useBrowserUseApi } from '@/hooks/useBrowserUseApi'
-import { TaskItem } from '@/lib/browserUseApi'
+import { TaskItem, browserUseApi } from '@/lib/browserUseApi'
 
 export default function TaskManager() {
   const { listTasks, getTask, stopTask, pauseTask, resumeTask, deleteSession, loading, error } = useBrowserUseApi()
   const [tasks, setTasks] = useState<TaskItem[]>([])
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null)
   const [taskDetails, setTaskDetails] = useState<{ steps?: { length: number } } | null>(null)
+  const [loadingTaskDetails, setLoadingTaskDetails] = useState(false)
 
   const loadTasks = useCallback(async () => {
     try {
@@ -19,23 +20,26 @@ export default function TaskManager() {
     }
   }, [listTasks])
 
-  const loadTaskDetails = async (taskId: string) => {
+  const loadTaskDetails = useCallback(async (taskId: string) => {
     try {
-      const details = await getTask(taskId)
+      setLoadingTaskDetails(true)
+      const details = await browserUseApi.getTask(taskId)
       setTaskDetails(details)
     } catch (err) {
       console.error('Failed to load task details:', err)
+    } finally {
+      setLoadingTaskDetails(false)
     }
-  }
+  }, [])
 
-  const handleTaskAction = async (taskId: string, action: 'stop' | 'pause' | 'resume') => {
+  const handleTaskAction = useCallback(async (taskId: string, action: 'stop' | 'pause' | 'resume') => {
     try {
       console.log(`Performing ${action} action on task:`, taskId)
       switch (action) {
         case 'stop':
           // Try to get task details first to get sessionId
           try {
-            const taskData = await getTask(taskId)
+            const taskData = await browserUseApi.getTask(taskId)
             if (taskData.sessionId) {
               console.log('Stopping by deleting session:', taskData.sessionId)
               await deleteSession(taskData.sessionId)
@@ -57,11 +61,15 @@ export default function TaskManager() {
       }
       // Reload tasks after action
       await loadTasks()
+      // Reload task details if this is the selected task
+      if (selectedTask?.id === taskId) {
+        await loadTaskDetails(taskId)
+      }
     } catch (err) {
       console.error(`Failed to ${action} task:`, err)
       // You could add a toast notification here if you have one
     }
-  }
+  }, [deleteSession, stopTask, pauseTask, resumeTask, loadTasks, loadTaskDetails, selectedTask?.id])
 
   useEffect(() => {
     loadTasks()
@@ -71,7 +79,7 @@ export default function TaskManager() {
     switch (status) {
       case 'started': return 'text-green-400'
       case 'paused': return 'text-yellow-400'
-      case 'finished': return 'text-blue-400'
+      case 'finished': return 'text-orange-400'
       case 'stopped': return 'text-red-400'
       default: return 'text-gray-400'
     }
@@ -132,7 +140,7 @@ export default function TaskManager() {
         <h2 className="text-xl font-semibold text-white">Task Manager</h2>
         <button
           onClick={loadTasks}
-          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          className="px-4 py-2 bg-orange-600 text-white rounded hover:bg-orange-700"
         >
           Refresh
         </button>
@@ -152,7 +160,7 @@ export default function TaskManager() {
                 }}
                 className={`p-3 rounded cursor-pointer transition-colors ${
                   selectedTask?.id === task.id
-                    ? 'bg-dark-300 border border-blue-500'
+                    ? 'bg-dark-300 border border-orange-500'
                     : 'bg-dark-300 hover:bg-dark-400'
                 }`}
               >
@@ -175,7 +183,11 @@ export default function TaskManager() {
         {/* Task Details */}
         <div className="bg-dark-200 rounded-lg p-4">
           <h3 className="text-lg font-medium text-white mb-3">Task Details</h3>
-          {selectedTask ? (
+          {loadingTaskDetails ? (
+            <div className="text-center text-gray-400 py-8">
+              Loading task details...
+            </div>
+          ) : selectedTask ? (
             <div className="space-y-3">
               <div>
                 <p className="text-sm text-gray-400">Task ID</p>
