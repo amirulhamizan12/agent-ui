@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { ArrowUp, Mic, Square, RotateCcw, Play } from 'lucide-react'
+import { ArrowUp, Square, RotateCcw, Play } from 'lucide-react'
 import { useTask } from '@/context/TaskContext'
 import { ChatMessage } from '@/context/TaskContext'
 import ChatMessageComponent from './ChatMessage'
@@ -243,13 +243,8 @@ export default function ChatInterface() {
           
           {/* Bottom Controls */}
           <div className="px-3 flex gap-2 items-center justify-end">
-            {/* Right Side - Microphone and Send */}
+            {/* Right Side - Send */}
             <div className="min-w-0 flex gap-2 flex-shrink items-center">
-              {/* Microphone Button */}
-              <div className="flex items-center justify-center cursor-pointer hover:bg-dark-400 size-8 flex-shrink-0 rounded-full border border-dark-400">
-                <Mic className="w-4 h-4 text-gray-400" />
-              </div>
-              
               {/* Send Button */}
               <button
                 onClick={handleSendMessage}

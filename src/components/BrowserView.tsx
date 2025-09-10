@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 import { Monitor, Image, ExternalLink, Play, ChevronRight, X, StopCircle } from 'lucide-react'
 import { useTask } from '@/context/TaskContext'
-import { browserUseApi } from '@/lib/browserUseApi'
 import { useSessionManagement } from '@/hooks/useSessionManagement'
 
 export default function BrowserView() {

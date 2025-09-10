@@ -438,19 +438,6 @@ class BrowserUseApiClient {
     }
   }
 
-  // Legacy method for backward compatibility - screenshots are now part of task steps
-  async getScreenshots(taskId: string): Promise<{ screenshots: string[] }> {
-    if (!this.apiKey) {
-      throw new Error('Browser Use API key not configured. Please set NEXT_PUBLIC_BROWSER_USE_API_KEY environment variable.')
-    }
-
-    const taskData = await this.getTask(taskId)
-    const screenshots = taskData.steps
-      ?.map(step => step.screenshotUrl)
-      .filter(url => url) || []
-
-    return { screenshots }
-  }
 }
 
 export const browserUseApi = new BrowserUseApiClient()

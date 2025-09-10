@@ -55,11 +55,9 @@ export type TaskAction =
   | { type: 'UPDATE_TASK_STATUS'; taskData: { taskStatus: string; steps: TaskStep[]; output: string | null; liveUrl: string | null; finishedAt: string | null; publicShareUrl: string | null } }
   | { type: 'COMPLETE_TASK'; summary: string }
   | { type: 'STOP_TASK' }
-  | { type: 'RESET_TASK' }
   | { type: 'RESET_SESSION' }
   | { type: 'ADD_CHAT_MESSAGE'; message: ChatMessage }
   | { type: 'UPDATE_CURRENT_ACTION'; action: string | null }
-  | { type: 'SET_SESSION_ID'; sessionId: string }
   | { type: 'CREATE_SESSION_START' }
   | { type: 'CREATE_SESSION_SUCCESS'; sessionId: string; sessionLiveUrl: string | null }
   | { type: 'CREATE_SESSION_ERROR' }
@@ -127,8 +125,6 @@ function taskReducer(state: TaskState, action: TaskAction): TaskState {
         endTime: new Date().toISOString(),
         currentAction: null
       }
-    case 'RESET_TASK':
-      return initialState
     case 'RESET_SESSION':
       return {
         ...state,
@@ -156,11 +152,6 @@ function taskReducer(state: TaskState, action: TaskAction): TaskState {
       return {
         ...state,
         currentAction: action.action
-      }
-    case 'SET_SESSION_ID':
-      return {
-        ...state,
-        sessionId: action.sessionId
       }
     case 'CREATE_SESSION_START':
       return {
