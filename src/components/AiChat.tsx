@@ -1,6 +1,6 @@
 "use client";
 import { useState, useRef, useEffect, useCallback, forwardRef, KeyboardEvent } from 'react';
-import { Sparkles, Mic, MicOff, Wifi, WifiOff, Loader2, Send, Bot } from 'lucide-react';
+import { Sparkles, Mic, MicOff, Wifi, WifiOff, Loader2, Bot } from 'lucide-react';
 import { Base64 } from 'js-base64';
 import { 
   GeminiConnectionManager, 
@@ -129,10 +129,26 @@ const ScrollArea = forwardRef<HTMLDivElement, ScrollAreaProps>(
 
 ScrollArea.displayName = 'ScrollArea';
 
-// TextInput Component
-const TextInput = ({ onSendMessage, isLoading = false, placeholder = "Type your message..." }: TextInputProps) => {
+// Unified Input Component
+const UnifiedInput = ({ 
+  onSendMessage, 
+  isLoading = false, 
+  placeholder = "Send Message...",
+  sharedWebSocket,
+  isWebSocketConnected,
+  onWebSocketReady
+}: TextInputProps & {
+  sharedWebSocket?: TextWebSocket | null;
+  isWebSocketConnected?: boolean;
+  onWebSocketReady?: () => void;
+}) => {
   const [message, setMessage] = useState('');
+  const [isRecording, setIsRecording] = useState(false);
+  const [audioLevel, setAudioLevel] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioWorkletNodeRef = useRef<AudioWorkletNode | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   const handleSubmit = () => {
     if (message.trim() && !isLoading) {
@@ -141,7 +157,7 @@ const TextInput = ({ onSendMessage, isLoading = false, placeholder = "Type your 
       // Reset textarea height after sending
       setTimeout(() => {
         if (textareaRef.current) {
-          textareaRef.current.style.height = '28px';
+          textareaRef.current.style.height = '24px';
         }
       }, 0);
     }
@@ -158,70 +174,10 @@ const TextInput = ({ onSendMessage, isLoading = false, placeholder = "Type your 
     const textarea = textareaRef.current;
     if (textarea) {
       textarea.style.height = 'auto';
-      textarea.style.height = Math.min(textarea.scrollHeight, 128) + 'px'; // 128px = max-h-32
+      textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
     }
   };
 
-  useEffect(() => {
-    autoResize();
-  }, [message]);
-
-  return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-        <h3 className="text-lg font-semibold text-white">Text Chat</h3>
-      </div>
-      
-      <div className="flex flex-col gap-3 rounded-[22px] transition-all relative bg-dark-300 py-3 max-h-[300px] shadow-[0px_12px_32px_0px_rgba(0,0,0,0.2)] border border-dark-400">
-        {/* Textarea Container */}
-        <div className="pl-4 pr-2">
-          <textarea
-            ref={textareaRef}
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder={placeholder}
-            disabled={isLoading}
-            className="flex rounded-md border-input focus-visible:outline-none focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 overflow-y-auto flex-1 bg-transparent p-0 pt-[1px] border-0 focus-visible:ring-0 focus-visible:ring-offset-0 w-full placeholder:text-gray-500 text-[15px] shadow-none resize-none min-h-[28px] text-white"
-            rows={1}
-            style={{ height: '28px' }}
-          />
-        </div>
-        
-        {/* Bottom Controls */}
-        <div className="px-3 flex gap-2 items-center justify-end">
-          {/* Right Side - Send */}
-          <div className="min-w-0 flex gap-2 flex-shrink items-center">
-            {/* Send Button */}
-            <button
-              onClick={handleSubmit}
-              disabled={!message.trim() || isLoading}
-              className="w-8 h-8 bg-dark-400 hover:bg-dark-300 disabled:bg-dark-500 disabled:cursor-not-allowed text-gray-300 hover:text-white rounded-full transition-colors flex items-center justify-center flex-shrink-0"
-            >
-              <Send className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// AudioPreview Component
-const AudioPreview = ({ sharedWebSocket, isWebSocketConnected, onWebSocketReady }: AudioPreviewProps) => {
-  // ========== STATE & REFS ==========
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const audioWorkletNodeRef = useRef<AudioWorkletNode | null>(null);
-  const setupInProgressRef = useRef(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [stream, setStream] = useState<MediaStream | null>(null);
-  const [audioLevel, setAudioLevel] = useState(0);
-  const [isAudioSetup, setIsAudioSetup] = useState(false);
-  const [isWebSocketReady, setIsWebSocketReady] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState<'disconnected' | 'connecting' | 'connected'>('disconnected');
-
-  // ========== UTILITY FUNCTIONS ==========
   const cleanupAudio = useCallback(() => {
     if (audioWorkletNodeRef.current) {
       audioWorkletNodeRef.current.disconnect();
@@ -231,6 +187,10 @@ const AudioPreview = ({ sharedWebSocket, isWebSocketConnected, onWebSocketReady 
       audioContextRef.current.close();
       audioContextRef.current = null;
     }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
   }, []);
 
   const sendAudioData = (b64Data: string) => {
@@ -238,15 +198,13 @@ const AudioPreview = ({ sharedWebSocket, isWebSocketConnected, onWebSocketReady 
     sharedWebSocket.sendMediaChunk(b64Data, "audio/pcm");
   };
 
-  // ========== MICROPHONE CONTROL ==========
-  const toggleMicrophone = async () => {
-    if (isRecording && stream) {
+  const toggleRecording = async () => {
+    if (isRecording) {
       setIsRecording(false);
+      setAudioLevel(0);
       cleanupAudio();
-      stream.getTracks().forEach(track => track.stop());
-      setStream(null);
     } else {
-      if (!sharedWebSocket || connectionStatus !== 'connected') {
+      if (!sharedWebSocket || !isWebSocketConnected) {
         console.warn('Cannot start recording: WebSocket not connected');
         return;
       }
@@ -257,53 +215,13 @@ const AudioPreview = ({ sharedWebSocket, isWebSocketConnected, onWebSocketReady 
         });
 
         audioContextRef.current = new AudioContext({ sampleRate: 16000 });
-        setStream(audioStream);
+        streamRef.current = audioStream;
         setIsRecording(true);
-      } catch (err) {
-        console.error('Error accessing microphone:', err);
-        cleanupAudio();
-      }
-    }
-  };
 
-  // ========== EFFECTS ==========
-  // WebSocket connection status management
-  useEffect(() => {
-    if (isWebSocketConnected && sharedWebSocket) {
-      setConnectionStatus('connected');
-      setIsWebSocketReady(true);
-      onWebSocketReady?.();
-    } else if (sharedWebSocket && !isWebSocketConnected) {
-      setConnectionStatus('connecting');
-      setIsWebSocketReady(false);
-    } else {
-      setConnectionStatus('disconnected');
-      setIsWebSocketReady(false);
-    }
-  }, [isWebSocketConnected, sharedWebSocket, onWebSocketReady]);
-
-  // Audio processing setup
-  useEffect(() => {
-    if (!isRecording || !stream || !audioContextRef.current || !isWebSocketReady || isAudioSetup || setupInProgressRef.current) return;
-
-    let isActive = true;
-    setupInProgressRef.current = true;
-
-    const setupAudioProcessing = async () => {
-      try {
+        // Setup audio processing
         const ctx = audioContextRef.current;
-        if (!ctx || ctx.state === 'closed' || !isActive) {
-          setupInProgressRef.current = false;
-          return;
-        }
-
         if (ctx.state === 'suspended') await ctx.resume();
         await ctx.audioWorklet.addModule('/worklets/audio-processor.js');
-
-        if (!isActive) {
-          setupInProgressRef.current = false;
-          return;
-        }
 
         audioWorkletNodeRef.current = new AudioWorkletNode(ctx, 'audio-processor', {
           numberOfInputs: 1, numberOfOutputs: 1,
@@ -311,9 +229,8 @@ const AudioPreview = ({ sharedWebSocket, isWebSocketConnected, onWebSocketReady 
           channelCount: 1, channelCountMode: 'explicit', channelInterpretation: 'speakers'
         });
 
-        const source = ctx.createMediaStreamSource(stream);
+        const source = ctx.createMediaStreamSource(audioStream);
         audioWorkletNodeRef.current.port.onmessage = (event) => {
-          if (!isActive) return;
           const { pcmData, level } = event.data;
           setAudioLevel(level);
           const b64Data = Base64.fromUint8Array(new Uint8Array(pcmData));
@@ -321,147 +238,145 @@ const AudioPreview = ({ sharedWebSocket, isWebSocketConnected, onWebSocketReady 
         };
 
         source.connect(audioWorkletNodeRef.current);
-        setIsAudioSetup(true);
-        setupInProgressRef.current = false;
-
-        return () => {
-          source.disconnect();
-          if (audioWorkletNodeRef.current) audioWorkletNodeRef.current.disconnect();
-          setIsAudioSetup(false);
-        };
-      } catch {
-        if (isActive) {
-          cleanupAudio();
-          setIsAudioSetup(false);
-        }
-        setupInProgressRef.current = false;
+      } catch (err) {
+        console.error('Error accessing microphone:', err);
+        cleanupAudio();
       }
-    };
-
-    setupAudioProcessing();
-
-    return () => {
-      isActive = false;
-      setIsAudioSetup(false);
-      setupInProgressRef.current = false;
-      if (audioWorkletNodeRef.current) {
-        audioWorkletNodeRef.current.disconnect();
-        audioWorkletNodeRef.current = null;
-      }
-    };
-  }, [isRecording, stream, isWebSocketReady]);
-
-  // ========== RENDER HELPERS ==========
-  const getStatusText = () => {
-    if (connectionStatus === 'connected') return 'Listening...';
-    if (connectionStatus === 'connecting') return 'Connecting to Gemini...';
-    return 'Waiting for connection...';
+    }
   };
 
-  // ========== RENDER ==========
+  useEffect(() => {
+    autoResize();
+  }, [message]);
+
+  useEffect(() => {
+    return () => {
+      cleanupAudio();
+    };
+  }, [cleanupAudio]);
+
+  const hasContent = message.trim().length > 0;
+  const canRecord = sharedWebSocket && isWebSocketConnected && !isLoading;
+
   return (
-    <div className="flex flex-col h-full space-y-4">
-      {/* Header */}
-      <div className="flex items-center gap-2">
-        <Mic className="h-5 w-5 text-orange-400" />
-        <h3 className="text-lg font-semibold text-white">Voice Chat</h3>
+    <div className="relative group">
+      {/* Main Input Container */}
+      <div className={`
+        relative flex items-end gap-2 sm:gap-3 p-3 sm:p-4 rounded-2xl transition-all duration-300 ease-out
+        bg-gradient-to-br from-dark-200/80 to-dark-300/80 backdrop-blur-sm
+        border border-dark-400/30 shadow-lg
+        ${isLoading ? 'opacity-70' : ''}
+        min-h-[56px] sm:min-h-[64px]
+      `}>
+        {/* Text Input Area */}
+        <div className="flex-1 relative">
+          <textarea
+            ref={textareaRef}
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder={placeholder}
+            disabled={isLoading}
+            className="w-full bg-transparent border-0 focus:outline-none placeholder:text-gray-400 text-white resize-none min-h-[24px] max-h-[120px] text-sm sm:text-base leading-relaxed pr-2 scrollbar-hide"
+            rows={1}
+            style={{ 
+              height: '24px',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none'
+            }}
+          />
+          
+        </div>
+
+        {/* Action Buttons Container */}
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+          {/* Voice Button */}
+          <button
+            onClick={toggleRecording}
+            disabled={!canRecord}
+            className={`
+              relative w-9 h-9 sm:w-10 sm:h-10 rounded-full transition-all duration-300 ease-out flex items-center justify-center
+              ${isRecording 
+                ? 'bg-gradient-to-br from-red-500 to-red-600 shadow-lg scale-110' 
+                : canRecord 
+                  ? 'bg-gradient-to-br from-orange-500 to-orange-600 hover:from-orange-400 hover:to-orange-500 shadow-lg hover:scale-105' 
+                  : 'bg-dark-400 text-gray-600 cursor-not-allowed'
+              }
+            `}
+            title={isRecording ? 'Stop recording' : 'Start voice input'}
+          >
+            {isRecording ? (
+              <MicOff className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+            ) : (
+              <Mic className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+            )}
+            
+          </button>
+
+          {/* Send Button */}
+          <button
+            onClick={handleSubmit}
+            disabled={!hasContent || isLoading}
+            className={`
+              w-9 h-9 sm:w-10 sm:h-10 rounded-full transition-all duration-300 ease-out flex items-center justify-center
+              ${hasContent && !isLoading
+                ? 'bg-gradient-to-br from-orange-500 to-orange-600 shadow-lg'
+                : 'bg-dark-400 text-gray-600 cursor-not-allowed'
+              }
+            `}
+            title={isLoading ? 'Sending...' : 'Send message'}
+          >
+            {isLoading ? (
+              <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 text-white animate-spin" />
+            ) : (
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                width="24" 
+                height="24" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                className="w-5 h-5 sm:w-6 sm:h-6 text-white"
+              >
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M5 12l14 0" />
+                <path d="M13 18l6 -6" />
+                <path d="M13 6l6 6" />
+              </svg>
+            )}
+          </button>
+        </div>
+
+        {/* Status Indicator */}
+        {isRecording && (
+          <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-dark-400/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs text-orange-300 font-medium whitespace-nowrap">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-orange-400 rounded-full animate-pulse" />
+              <span className="hidden sm:inline">Listening... {Math.round(audioLevel)}%</span>
+              <span className="sm:hidden">🎤 {Math.round(audioLevel)}%</span>
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className="flex-1 flex flex-col space-y-4">
-        {/* Audio Visualization Display */}
-        <div className="flex-1 min-h-[280px] bg-dark-300 rounded-lg flex flex-col items-center justify-center border border-dark-400 relative">
-          {!isRecording ? (
-            <div className="text-center space-y-6">
-              <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto shadow-lg transition-transform ${
-                !sharedWebSocket || connectionStatus !== 'connected' 
-                  ? 'bg-dark-400 text-gray-600 cursor-not-allowed' 
-                  : 'bg-gradient-to-br from-orange-500 to-orange-600 text-white cursor-pointer hover:scale-105'
-              }`}
-                   onClick={(!sharedWebSocket || connectionStatus !== 'connected') ? undefined : toggleMicrophone}>
-                <Mic className="h-10 w-10" />
-              </div>
-              <div className="space-y-2">
-                <h4 className="text-xl font-semibold text-white">Ready to Listen</h4>
-                <p className="text-gray-400 text-base">
-                  {!isWebSocketConnected ? 'Establishing connection...' : 'Click the microphone to start'}
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center space-y-6">
-              <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto transition-all duration-300 shadow-lg cursor-pointer hover:scale-105 ${
-                audioLevel > 10 ? 'bg-gradient-to-br from-red-500 to-red-600 scale-110' : 'bg-gradient-to-br from-orange-500 to-orange-600'
-              }`}
-              onClick={toggleMicrophone}>
-                <MicOff className="h-10 w-10 text-white" />
-              </div>
-              
-              <div className="space-y-3">
-                <div className="flex items-center justify-center space-x-1">
-                  {[...Array(15)].map((_, i) => (
-                    <div key={i} className={`w-1 bg-orange-500 rounded-full transition-all duration-100 ${audioLevel > (i * 6.67) ? 'h-8' : 'h-3'}`} />
-                  ))}
-                </div>
-                <p className="text-gray-400 text-base font-medium">{getStatusText()}</p>
-              </div>
-            </div>
-          )}
-          
-          {/* Connection Status Overlay */}
-          {isRecording && connectionStatus !== 'connected' && (
-            <div className="absolute inset-0 bg-black/50 flex items-center justify-center rounded-lg backdrop-blur-sm">
-              <div className="text-center space-y-2">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white mx-auto" />
-                <p className="text-white font-medium text-sm">{connectionStatus === 'connecting' ? 'Connecting...' : 'Disconnected'}</p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-      
-      {/* Audio Level Indicator */}
-      {isRecording && (
-        <div className="space-y-2">
-          <div className="flex justify-between text-sm text-gray-400">
-            <span className="font-medium">Audio Level</span>
-            <span className="font-semibold">{Math.round(audioLevel)}%</span>
-          </div>
-          <div className="w-full h-2 rounded-full bg-dark-400">
-            <div className="h-full rounded-full transition-all bg-gradient-to-r from-orange-400 via-orange-500 to-orange-600" 
-                 style={{ width: `${audioLevel}%`, transition: 'width 100ms ease-out' }} />
-          </div>
-        </div>
-      )}
     </div>
   );
 };
 
+
 // Helper function to create message components
 const HumanMessage = ({ text }: { text: string }) => (
-  <div className="flex items-start space-x-3 flex-row-reverse space-x-reverse">
-    <div className="flex-1 min-w-0 max-w-full">
-      <div 
-        className="max-w-full ml-auto"
-        style={{
-          maxWidth: '77%',
-          background: '#ed7d35',
-          color: 'white',
-          padding: '13px 18px',
-          borderRadius: '20px 7px 20px 20px',
-          fontSize: '14px',
-          whiteSpace: 'pre-wrap',
-          wordBreak: 'break-word',
-          border: 'none',
-          lineHeight: '1.4',
-          fontFamily: 'Geist, sans-serif',
-          letterSpacing: '0.06em'
-        }}
-      >
-        <div className="break-words overflow-hidden">
+  <div className="flex justify-end mb-4">
+    <div className="max-w-[85%] lg:max-w-[75%]">
+      <div className="bg-gradient-to-br from-orange-500 to-orange-600 text-white px-4 py-3 rounded-2xl rounded-br-md shadow-lg">
+        <div className="text-sm leading-relaxed break-words">
           {text}
         </div>
       </div>
-      <div className="mt-1 text-xs text-gray-500 text-right">
+      <div className="mt-1 text-xs text-gray-400 text-right mr-1">
         {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
       </div>
     </div>
@@ -469,17 +384,14 @@ const HumanMessage = ({ text }: { text: string }) => (
 );
 
 const GeminiMessage = ({ text }: { text: string }) => (
-  <div className="flex items-start space-x-3">
-    <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-white text-dark-200">
-      <Bot className="w-5 h-5" />
-    </div>
-    <div className="flex-1 min-w-0 max-w-full">
-      <div className="bg-dark-300 text-white mr-12 rounded-lg p-4">
-        <div className="text-sm leading-relaxed break-words overflow-hidden">
+  <div className="flex justify-start mb-4">
+    <div className="max-w-[85%] lg:max-w-[75%]">
+      <div className="bg-gradient-to-br from-dark-300 to-dark-400 text-white px-4 py-3 rounded-2xl rounded-bl-md shadow-lg border border-dark-200/50">
+        <div className="text-sm leading-relaxed break-words">
           {text}
         </div>
       </div>
-      <div className="mt-1 text-xs text-gray-500 text-left">
+      <div className="mt-1 text-xs text-gray-400 text-left ml-1">
         {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
       </div>
     </div>
@@ -577,122 +489,28 @@ export default function AiChat() {
 
 
   return (
-    <div className="w-full bg-dark-100 flex flex-col h-full lg:h-screen">
-      {/* Header */}
-      <div className="px-6 py-4" style={{ backgroundColor: '#1a1a1a' }}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <Bot className="w-5 h-5 text-primary" />
-            <div>
-              <span className="text-white font-medium">Gemini AI Chat</span>
-              <p className="text-gray-400 text-sm">
-                {textConnection.isConnected 
-                  ? 'Connected to Gemini - ready for conversation'
-                  : textConnection.isConnecting
-                    ? 'Connecting to Gemini...'
-                    : 'Disconnected - establishing connection...'
-                }
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center space-x-2">
-            <ConnectionStatus
-              isConnected={textConnection.isConnected}
-              isConnecting={textConnection.isConnecting}
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 p-4">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-full">
-          {/* Input Section */}
-          <div className="space-y-4">
-            {/* Voice Input */}
-            <div className="bg-dark-200 rounded-lg p-6 min-h-[400px] flex flex-col">
-              <AudioPreview
-                sharedWebSocket={connectionManagerRef.current?.getTextSocket()}
-                isWebSocketConnected={textConnection.isConnected}
-                onWebSocketReady={() => {
-                  // WebSocket is ready for audio
-                }}
-              />
-            </div>
-
-            {/* Text Input */}
-            <div className="bg-dark-200 rounded-lg p-4">
-              <TextInput
-                onSendMessage={handleTextMessage}
-                isLoading={isTextLoading}
-                placeholder="Type your message or use voice..."
-              />
-            </div>
-          </div>
-
-          {/* Chat Section */}
-          <div className="bg-dark-200 rounded-lg overflow-hidden flex flex-col">
-            <div className="bg-dark-300 px-4 py-3 border-b border-dark-400">
-              <h3 className="text-lg font-semibold text-white">
-                Conversation
-              </h3>
-            </div>
-            <ScrollArea className="flex-1">
-              <div className="p-4 space-y-4">
-                {messages.length === 0 ? (
-                  <div className="text-center text-gray-400 mt-8">
-                    <Bot className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>Start a conversation by typing a message or using voice</p>
-                  </div>
-                ) : (
-                  messages.map((message, index) => (
-                    message.type === 'human' ? (
-                      <HumanMessage key={message.id || `msg-${index}`} text={message.text} />
-                    ) : (
-                      <GeminiMessage
-                        key={message.id || `msg-${index}`}
-                        text={message.text}
-                      />
-                    )
-                  ))
-                )}
-                {(isTyping || isTextLoading) && (
-                  <div className="flex gap-3 items-start">
-                    <div className="flex-1 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold text-gray-300">Gemini</p>
-                        <span className="text-xs text-gray-500">typing...</span>
-                      </div>
-                      <div className="rounded-2xl bg-dark-300 border border-dark-400 px-4 py-3 text-sm text-gray-300">
-                        <div className="flex items-center gap-2">
-                          <div className="flex space-x-1">
-                            <div className="w-2 h-2 bg-orange-400 rounded-full animate-bounce"></div>
-                            <div className="w-2 h-2 bg-orange-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                            <div className="w-2 h-2 bg-orange-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                          </div>
-                          <span className="ml-2 font-medium">Thinking...</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
-          </div>
-        </div>
-      </div>
-
-      {/* Status Bar */}
+    <div className="w-full bg-dark-100 flex flex-col h-screen overflow-hidden">
+      {/* Status Bar - Moved to top */}
       <div className="px-4 lg:px-6 py-3" style={{ backgroundColor: '#1a1a1a' }}>
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2 lg:space-x-3">
-            <div className={`w-2 h-2 rounded-full ${
-              textConnection.isConnected 
-                ? 'bg-green-500' 
-                : textConnection.isConnecting
-                  ? 'bg-yellow-500 animate-pulse'
-                  : 'bg-red-500'
-            }`}></div>
+            <div className="relative">
+              <div className={`w-2 h-2 rounded-full ${
+                textConnection.isConnected 
+                  ? 'bg-green-500' 
+                  : textConnection.isConnecting
+                    ? 'bg-yellow-500 animate-pulse'
+                    : 'bg-red-500'
+              }`}></div>
+              {/* Wave effect when connected */}
+              {textConnection.isConnected && (
+                <>
+                  <div className="absolute inset-0 w-2 h-2 rounded-full bg-green-500/30 animate-ping"></div>
+                  <div className="absolute inset-0 w-2 h-2 rounded-full bg-green-500/20 animate-ping" style={{animationDelay: '0.5s'}}></div>
+                  <div className="absolute inset-0 w-2 h-2 rounded-full bg-green-500/10 animate-ping" style={{animationDelay: '1s'}}></div>
+                </>
+              )}
+            </div>
             <span className="text-gray-300 text-xs lg:text-sm">
               {textConnection.isConnected 
                 ? 'Connected to Gemini' 
@@ -708,6 +526,74 @@ export default function AiChat() {
                 {messages.length} messages
               </div>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content - Conversation below status bar */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Chat Section - Takes most of the space with independent scrolling */}
+        <div className="flex-1 bg-dark-100 mx-4 mt-4 mb-4 rounded-lg overflow-hidden flex flex-col">
+          <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
+            <div className="p-4 space-y-4 min-h-full">
+              {messages.length === 0 ? (
+                <div className="flex justify-center items-center h-full min-h-[400px]">
+                  <div className="text-center">
+                    <div className="w-16 h-16 mx-auto mb-6 bg-gradient-to-br from-orange-500/20 to-orange-600/20 rounded-full flex items-center justify-center">
+                      <Bot className="w-8 h-8 text-orange-400" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-300 mb-2">Welcome to AI Chat</h3>
+                    <p className="text-gray-400 text-sm max-w-md mx-auto leading-relaxed">
+                      Start a conversation by typing a message or using voice input. I'm here to help!
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                messages.map((message, index) => (
+                  message.type === 'human' ? (
+                    <HumanMessage key={message.id || `msg-${index}`} text={message.text} />
+                  ) : (
+                    <GeminiMessage
+                      key={message.id || `msg-${index}`}
+                      text={message.text}
+                    />
+                  )
+                ))
+              )}
+              {(isTyping || isTextLoading) && (
+                <div className="flex justify-start mb-4">
+                  <div className="max-w-[85%] lg:max-w-[75%]">
+                    <div className="bg-gradient-to-br from-dark-300 to-dark-400 text-white px-4 py-3 rounded-2xl rounded-bl-md shadow-lg border border-dark-200/50">
+                      <div className="flex items-center gap-3">
+                        <div className="flex space-x-1">
+                          <div className="w-2 h-2 bg-orange-400 rounded-full animate-bounce"></div>
+                          <div className="w-2 h-2 bg-orange-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                          <div className="w-2 h-2 bg-orange-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                        </div>
+                        <span className="text-sm text-gray-300 font-medium">AI is thinking...</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Input Section - Fixed at bottom */}
+        <div className="px-4 pb-4">
+          {/* Unified Input Container */}
+          <div className="max-w-4xl mx-auto">
+            <UnifiedInput
+              onSendMessage={handleTextMessage}
+              isLoading={isTextLoading}
+              placeholder="Send Message..."
+              sharedWebSocket={connectionManagerRef.current?.getTextSocket()}
+              isWebSocketConnected={textConnection.isConnected}
+              onWebSocketReady={() => {
+                // WebSocket is ready for audio
+              }}
+            />
           </div>
         </div>
       </div>
