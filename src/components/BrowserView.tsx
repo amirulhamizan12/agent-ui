@@ -7,7 +7,7 @@ import { useSessionManagement } from '@/hooks/useSessionManagement'
 
 export default function BrowserView() {
   const { state } = useTask()
-  const { sessionStatus, sessionId, sessionLiveUrl, stopSession } = useSessionManagement()
+  const { sessionStatus, sessionId, sessionLiveUrl, stopSession, createSession } = useSessionManagement()
   const [isLive, setIsLive] = useState(false)
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
   const [showLiveView, setShowLiveView] = useState(false)
@@ -36,6 +36,14 @@ export default function BrowserView() {
 
   const currentStep = state.steps[currentStepIndex]
   const hasScreenshots = state.steps.some(step => step.screenshotUrl)
+
+  const handleStartSession = async () => {
+    try {
+      await createSession()
+    } catch (error) {
+      console.error('Failed to start session:', error)
+    }
+  }
 
 
   // Debug logging
@@ -84,6 +92,19 @@ export default function BrowserView() {
             </div>
           </div>
           <div className="flex items-center space-x-2">
+            {/* Start Session Button */}
+            {sessionStatus === 'none' && (
+              <button
+                onClick={handleStartSession}
+                disabled={sessionStatus !== 'none'}
+                className="flex items-center space-x-2 bg-primary hover:bg-primary/90 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg transition-colors"
+                title="Start a new browser session"
+              >
+                <Play className="w-4 h-4" />
+                <span className="text-sm font-medium">Start Session</span>
+              </button>
+            )}
+
             {/* Stop Session Button */}
             {sessionId && sessionStatus === 'active' && (
               <button
@@ -315,7 +336,7 @@ export default function BrowserView() {
                      'Browser View'}
                   </h3>
                   <p className="text-sm">
-                    {sessionStatus === 'none' ? 'Start a conversation to create a browser session' :
+                    {sessionStatus === 'none' ? 'Use the "Start Session" button in the header to get started' :
                      sessionStatus === 'creating' ? 'Setting up your browser session...' :
                      'Start a task to see automation progress'}
                   </p>

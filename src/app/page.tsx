@@ -12,7 +12,7 @@ import { useTaskCleanup } from '@/hooks/useTaskCleanup'
 import { useKeepAlive } from '@/hooks/useKeepAlive'
 
 function AppContent() {
-  const [activeTab, setActiveTab] = useState<'chat' | 'tasks' | 'ai-chat'>('chat')
+  const [activeTab, setActiveTab] = useState<'chat' | 'tasks' | 'ai-chat'>('ai-chat')
   useTaskExecution()
   useTaskCleanup()
   useKeepAlive()
@@ -23,6 +23,20 @@ function AppContent() {
       <div className="flex flex-col bg-dark-200 w-16 flex-shrink-0 relative">
         {/* Server List Container */}
         <div className="flex flex-col items-center py-3 space-y-2">
+          {/* AI Chat Tab */}
+          <div className="relative group">
+            <button
+              onClick={() => setActiveTab('ai-chat')}
+              className={`relative w-11 h-11 rounded-2xl transition-all duration-200 flex items-center justify-center group ${
+                activeTab === 'ai-chat'
+                  ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/25'
+                  : 'bg-dark-300 text-gray-400 hover:bg-orange-500 hover:text-white hover:rounded-xl'
+              }`}
+            >
+              <Bot className="w-6 h-6" />
+            </button>
+          </div>
+
           {/* Chat Tab */}
           <div className="relative group">
             <button
@@ -48,20 +62,6 @@ function AppContent() {
               }`}
             >
               <ClipboardList className="w-6 h-6" />
-            </button>
-          </div>
-
-          {/* AI Chat Tab */}
-          <div className="relative group">
-            <button
-              onClick={() => setActiveTab('ai-chat')}
-              className={`relative w-11 h-11 rounded-2xl transition-all duration-200 flex items-center justify-center group ${
-                activeTab === 'ai-chat'
-                  ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/25'
-                  : 'bg-dark-300 text-gray-400 hover:bg-orange-500 hover:text-white hover:rounded-xl'
-              }`}
-            >
-              <Bot className="w-6 h-6" />
             </button>
           </div>
         </div>
@@ -91,8 +91,13 @@ function AppContent() {
             <TaskManager />
           </div>
         ) : (
-          <div className="flex-1 overflow-auto">
-            <AiChat />
+          <div className="flex flex-col lg:flex-row flex-1">
+            <div className="w-full lg:w-[33.33%]">
+              <AiChat />
+            </div>
+            <div className="w-full lg:w-[66.67%]">
+              <BrowserView />
+            </div>
           </div>
         )}
       </div>
