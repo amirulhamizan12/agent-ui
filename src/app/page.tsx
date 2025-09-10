@@ -1,17 +1,18 @@
 'use client'
 
 import { useState } from 'react'
-import { MessageSquare, ClipboardList } from 'lucide-react'
+import { MessageSquare, ClipboardList, Bot } from 'lucide-react'
 import ChatInterface from '@/components/ChatInterface'
 import BrowserView from '@/components/BrowserView'
 import TaskManager from '@/components/TaskManager'
+import AiChat from '@/components/AiChat'
 import { TaskProvider } from '@/context/TaskContext'
 import { useTaskExecution } from '@/hooks/useTaskExecution'
 import { useTaskCleanup } from '@/hooks/useTaskCleanup'
 import { useKeepAlive } from '@/hooks/useKeepAlive'
 
 function AppContent() {
-  const [activeTab, setActiveTab] = useState<'chat' | 'tasks'>('chat')
+  const [activeTab, setActiveTab] = useState<'chat' | 'tasks' | 'ai-chat'>('chat')
   useTaskExecution()
   useTaskCleanup()
   useKeepAlive()
@@ -49,6 +50,20 @@ function AppContent() {
               <ClipboardList className="w-6 h-6" />
             </button>
           </div>
+
+          {/* AI Chat Tab */}
+          <div className="relative group">
+            <button
+              onClick={() => setActiveTab('ai-chat')}
+              className={`relative w-11 h-11 rounded-2xl transition-all duration-200 flex items-center justify-center group ${
+                activeTab === 'ai-chat'
+                  ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/25'
+                  : 'bg-dark-300 text-gray-400 hover:bg-orange-500 hover:text-white hover:rounded-xl'
+              }`}
+            >
+              <Bot className="w-6 h-6" />
+            </button>
+          </div>
         </div>
 
         {/* Separator */}
@@ -71,9 +86,13 @@ function AppContent() {
               <BrowserView />
             </div>
           </div>
-        ) : (
+        ) : activeTab === 'tasks' ? (
           <div className="flex-1 overflow-auto">
             <TaskManager />
+          </div>
+        ) : (
+          <div className="flex-1 overflow-auto">
+            <AiChat />
           </div>
         )}
       </div>
