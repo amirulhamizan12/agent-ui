@@ -1,12 +1,201 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { ArrowUp, Square, RotateCcw, Play } from 'lucide-react'
+import { ArrowUp, Square, RotateCcw, Play, Bot, User, Clock, CheckCircle, AlertCircle, Info } from 'lucide-react'
 import { useTask } from '@/context/TaskContext'
 import { ChatMessage } from '@/context/TaskContext'
-import ChatMessageComponent from './ChatMessage'
 import { browserUseApi } from '@/lib/browserUseApi'
 import { useSessionManagement } from '@/hooks/useSessionManagement'
+
+interface ChatMessageProps {
+  message: ChatMessage
+}
+
+function ChatMessageComponent({ message }: ChatMessageProps) {
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  }
+
+  const getMessageIcon = () => {
+    const isStepMessage = message.content.includes('**Step') && message.type === 'ai'
+    
+    switch (message.type) {
+      case 'user':
+        return <User className="w-4 h-4" />
+      case 'ai':
+        return isStepMessage ? <Play className="w-4 h-4" /> : <Bot className="w-4 h-4" />
+      case 'system':
+        // Different icons based on message content
+        if (message.content.includes('error') || message.content.includes('Error') || message.content.includes('failed')) {
+          return <AlertCircle className="w-4 h-4" />
+        } else if (message.content.includes('success') || message.content.includes('Success') || message.content.includes('completed')) {
+          return <CheckCircle className="w-4 h-4" />
+        }
+        return <Info className="w-4 h-4" />
+      default:
+        return <Bot className="w-4 h-4" />
+    }
+  }
+
+  const getMessageStyles = () => {
+    const isStepMessage = message.content.includes('**Step') && message.type === 'ai'
+    
+    switch (message.type) {
+      case 'user':
+        return 'bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/25'
+      case 'ai':
+        return isStepMessage 
+          ? 'bg-gradient-to-br from-orange-900/40 to-orange-800/40 border border-orange-500/40 text-white shadow-lg shadow-orange-500/10' 
+          : 'bg-dark-300 text-white border border-dark-400 shadow-sm'
+      case 'system':
+        // Different styles based on message content
+        if (message.content.includes('error') || message.content.includes('Error') || message.content.includes('failed')) {
+          return 'bg-red-900/20 border border-red-500/30 text-red-200 mx-8 text-center shadow-lg shadow-red-500/10'
+        } else if (message.content.includes('success') || message.content.includes('Success') || message.content.includes('completed')) {
+          return 'bg-green-900/20 border border-green-500/30 text-green-200 mx-8 text-center shadow-lg shadow-green-500/10'
+        }
+        return 'bg-dark-400 text-gray-300 mx-8 text-center border border-dark-300'
+      default:
+        return 'bg-dark-300 text-white border border-dark-400 shadow-sm'
+    }
+  }
+
+  const getAvatarStyles = () => {
+    const isStepMessage = message.content.includes('**Step') && message.type === 'ai'
+    
+    switch (message.type) {
+      case 'user':
+        return 'bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/25'
+      case 'ai':
+        return isStepMessage 
+          ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-lg shadow-orange-500/25' 
+          : 'bg-white text-dark-200 shadow-sm'
+      case 'system':
+        if (message.content.includes('error') || message.content.includes('Error') || message.content.includes('failed')) {
+          return 'bg-red-500 text-white shadow-lg shadow-red-500/25'
+        } else if (message.content.includes('success') || message.content.includes('Success') || message.content.includes('completed')) {
+          return 'bg-green-500 text-white shadow-lg shadow-green-500/25'
+        }
+        return 'bg-dark-400 text-gray-300'
+      default:
+        return 'bg-white text-dark-200 shadow-sm'
+    }
+  }
+
+  const isStepMessage = message.content.includes('**Step') && message.type === 'ai'
+  const isSystemMessage = message.type === 'system'
+  const isUserMessage = message.type === 'user'
+
+  return (
+    <div className={`flex items-start space-x-3 group ${isUserMessage ? 'flex-row-reverse space-x-reverse' : ''}`}>
+      {/* Avatar */}
+      {!isSystemMessage && !isStepMessage && message.type !== 'ai' && (
+        <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-200 ${getAvatarStyles()} group-hover:scale-105`}>
+          {getMessageIcon()}
+        </div>
+      )}
+      
+      {/* Message Content */}
+      <div className="flex-1 min-w-0 max-w-full">
+        <div 
+          className={`max-w-full rounded-2xl px-4 py-3 transition-all duration-200 hover:shadow-lg ${getMessageStyles()} ${isUserMessage ? 'ml-auto' : ''} ${isStepMessage ? 'mr-12' : ''}`}
+          style={isUserMessage ? {
+            maxWidth: '77%',
+            borderRadius: '20px 7px 20px 20px',
+            fontSize: '14px',
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            lineHeight: '1.5',
+            fontFamily: 'Inter, system-ui, sans-serif',
+            letterSpacing: '0.01em'
+          } : {
+            fontSize: '14px',
+            whiteSpace: 'pre-wrap',
+            wordBreak: 'break-word',
+            lineHeight: '1.5',
+            fontFamily: 'Inter, system-ui, sans-serif',
+            letterSpacing: '0.01em'
+          }}
+        >
+          <div className={`${isUserMessage ? 'break-words overflow-hidden' : 'break-words overflow-hidden'}`}>
+            {message.content.split('\n').map((line, index) => {
+              // Handle markdown-style formatting for step messages
+              if (line.startsWith('**') && line.endsWith('**')) {
+                return (
+                  <div key={index} className="font-semibold text-orange-300 mb-1 flex items-center gap-2">
+                    <div className="w-1.5 h-1.5 bg-orange-400 rounded-full"></div>
+                    {line.replace(/\*\*/g, '')}
+                  </div>
+                )
+              } else if (line.startsWith('📍')) {
+                const url = line.substring(2)
+                return (
+                  <div key={index} className="text-xs text-gray-400 mt-2 p-2 bg-dark-400/50 rounded-lg border border-dark-300">
+                    <span className="break-all overflow-hidden flex items-center gap-2">
+                      <div className="w-1 h-1 bg-orange-400 rounded-full flex-shrink-0"></div>
+                      <a 
+                        href={url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-orange-400 hover:text-orange-300 underline transition-colors"
+                        title={url}
+                      >
+                        {url.length > 60 ? `${url.substring(0, 60)}...` : url}
+                      </a>
+                    </span>
+                  </div>
+                )
+              } else {
+                // Handle **text** patterns anywhere in the line
+                const parts = line.split(/(\*\*[^*]+\*\*)/g)
+                return (
+                  <div key={index} className="break-words">
+                    {parts.map((part, partIndex) => {
+                      if (part.startsWith('**') && part.endsWith('**')) {
+                        return (
+                          <strong key={partIndex} className="font-semibold text-orange-300">
+                            {part.replace(/\*\*/g, '')}
+                          </strong>
+                        )
+                      }
+                      return part
+                    })}
+                  </div>
+                )
+              }
+            })}
+          </div>
+          
+          {/* Attachments */}
+          {message.attachments && message.attachments.length > 0 && (
+            <div className="mt-3 space-y-2">
+              {message.attachments.map((attachment, index) => (
+                <div key={index} className="p-3 bg-dark-400/50 rounded-lg border border-dark-300 hover:bg-dark-400/70 transition-colors">
+                  <a 
+                    href={attachment.url} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-orange-400 hover:text-orange-300 text-sm flex items-center gap-2 transition-colors"
+                  >
+                    <div className="w-1.5 h-1.5 bg-orange-400 rounded-full flex-shrink-0"></div>
+                    {attachment.name || attachment.url}
+                  </a>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        
+        {/* Timestamp */}
+        {!(isSystemMessage && (message.content.includes('Creating New Session') || message.content.includes('Session Created Successfully') || message.content.includes('Stopping Session') || message.content.includes('Session Stopped Successfully'))) && (
+          <div className={`mt-2 text-xs text-gray-500 ${isUserMessage ? 'text-right' : 'text-left'} opacity-0 group-hover:opacity-100 transition-opacity duration-200`}>
+            {formatTime(message.timestamp)}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 
 export default function ChatInterface() {
   const { state, dispatch } = useTask()
@@ -165,7 +354,7 @@ export default function ChatInterface() {
     <div className="w-full bg-dark-100 flex flex-col h-full lg:h-screen">
 
       {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-4 max-w-full">
+      <div className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-4 max-w-full scrollbar-hide">
         {state.chatMessages.length === 0 ? (
           <div className="text-center text-gray-400 mt-8">
             {sessionStatus === 'none' ? (
