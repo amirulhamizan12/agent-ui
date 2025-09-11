@@ -1,9 +1,9 @@
-# 🎤 Realtime Studio - #nicehack69
+# Realtime Studio - #nicehack69
 
 > **The Future of Human-Computer Interaction is Here**  
 > *Voice-Controlled AI Browser Assistant for Real-Time Web Automation*
 
-[![Browser-Use](https://img.shields.io/badge/Browser--Use-2.0-blue?style=flat-square&logo=github)](https://github.com/browser-use/browser-use)
+[![Browser-Use](https://img.shields.io/badge/Browser--Use-3.0-blue?style=flat-square&logo=github)](https://github.com/browser-use/browser-use)
 [![Gemini AI](https://img.shields.io/badge/Gemini-AI-orange?style=flat-square&logo=google)](https://ai.google.dev/)
 [![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
