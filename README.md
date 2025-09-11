@@ -48,26 +48,6 @@ NEXT_PUBLIC_GEMINI_API_KEY=your_gemini_api_key
 NEXT_PUBLIC_BROWSER_USE_API_KEY=your_browser_use_api_key
 ```
 
-## 🎯 What judges will see in 2 minutes
-
-1) You say a task out loud.
-2) The agent opens a live browser view and performs the steps (clicks, forms, navigation, screenshots).
-3) A tangible artifact appears: a PR link, an issue comment, or a polished report you can share on X.
-
-## 📊 Benchmarks that matter (for live demos)
-
-- **Speech latency**: typically < 200ms
-- **Action cadence**: ~1–2s/step in Browser‑Use live sessions
-- **Result time**: < 10s for common multi‑step flows
-
-## 🤝 Contributing and feedback
-
-This project was built for #nicehack69. We want your toughest sites, your worst UX, and your bug reports. Open an issue, share a URL, or propose a demo challenge — the agent should handle it.
-
-Areas to contribute:
-- Voice command patterns and action prompting
-- Robustness across tricky UIs (iframes, shadow DOM, virtualized lists)
-- Artifact exporters (GitHub PR/Issue helpers, report generators, clip makers)
 
 ## 📄 License
 
