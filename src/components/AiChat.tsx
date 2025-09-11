@@ -433,22 +433,15 @@ const UnifiedInput = ({
   placeholder = "Send Message...",
   sharedWebSocket,
   isWebSocketConnected,
-  onWebSocketReady: _onWebSocketReady,
-  speechWebSocket,
-  isSpeechWebSocketConnected,
-  onSpeechMessage
+  onWebSocketReady: _onWebSocketReady
 }: TextInputProps & {
   sharedWebSocket?: TextWebSocket | null;
   isWebSocketConnected?: boolean;
   onWebSocketReady?: () => void;
-  speechWebSocket?: any | null;
-  isSpeechWebSocketConnected?: boolean;
-  onSpeechMessage?: (message: string) => void;
 }) => {
   const [message, setMessage] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
-  const [useSpeechMode, setUseSpeechMode] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioWorkletNodeRef = useRef<AudioWorkletNode | null>(null);
@@ -456,11 +449,7 @@ const UnifiedInput = ({
 
   const handleSubmit = () => {
     if (message.trim() && !isLoading) {
-      if (useSpeechMode && onSpeechMessage) {
-        onSpeechMessage(message.trim());
-      } else {
-        onSendMessage(message.trim());
-      }
+      onSendMessage(message.trim());
       setMessage('');
       // Reset textarea height after sending
       setTimeout(() => {
@@ -502,11 +491,7 @@ const UnifiedInput = ({
   }, []);
 
   const sendAudioData = (b64Data: string) => {
-    if (useSpeechMode && speechWebSocket) {
-      // For speech mode, we'll handle this differently
-      // The speech WebSocket expects text messages, not audio chunks
-      console.log('[UnifiedInput] Speech mode - audio data would be processed differently');
-    } else if (sharedWebSocket) {
+    if (sharedWebSocket) {
       sharedWebSocket.sendMediaChunk(b64Data, "audio/pcm");
     }
   };
@@ -517,9 +502,7 @@ const UnifiedInput = ({
       setAudioLevel(0);
       cleanupAudio();
     } else {
-      const canRecord = useSpeechMode 
-        ? (speechWebSocket && isSpeechWebSocketConnected)
-        : (sharedWebSocket && isWebSocketConnected);
+      const canRecord = sharedWebSocket && isWebSocketConnected;
         
       if (!canRecord) {
         console.warn('Cannot start recording: WebSocket not connected');
@@ -573,9 +556,7 @@ const UnifiedInput = ({
   }, [cleanupAudio]);
 
   const hasContent = message.trim().length > 0;
-  const canRecord = useSpeechMode 
-    ? (speechWebSocket && isSpeechWebSocketConnected && !isLoading)
-    : (sharedWebSocket && isWebSocketConnected && !isLoading);
+  const canRecord = sharedWebSocket && isWebSocketConnected && !isLoading;
 
   return (
     <div className="relative group">
@@ -594,7 +575,7 @@ const UnifiedInput = ({
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder={useSpeechMode ? "Send Speech Message..." : placeholder}
+            placeholder={placeholder}
             disabled={isLoading}
             className="w-full bg-transparent border-0 focus:outline-none placeholder:text-gray-400 text-white resize-none min-h-[24px] max-h-[120px] text-sm sm:text-base leading-relaxed pr-2 scrollbar-hide"
             rows={1}
@@ -609,23 +590,6 @@ const UnifiedInput = ({
 
         {/* Action Buttons Container */}
         <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-          {/* Mode Toggle Button */}
-          <button
-            onClick={() => setUseSpeechMode(!useSpeechMode)}
-            className={`
-              w-8 h-8 sm:w-9 sm:h-9 rounded-full transition-all duration-300 ease-out flex items-center justify-center
-              ${useSpeechMode 
-                ? 'bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg' 
-                : 'bg-gradient-to-br from-gray-500 to-gray-600 hover:from-gray-400 hover:to-gray-500 shadow-lg hover:scale-105'
-              }
-            `}
-            title={useSpeechMode ? 'Switch to text mode' : 'Switch to speech mode'}
-          >
-            <span className="text-white text-xs font-bold">
-              {useSpeechMode ? 'S' : 'T'}
-            </span>
-          </button>
-
           {/* Voice Button */}
           <button
             onClick={toggleRecording}
@@ -941,36 +905,6 @@ export default function AiChat() {
     }
   };
 
-  const handleSpeechMessage = async (message: string) => {
-    // Add user message to chat
-    const userMessage = createMessage('human', message);
-    setMessages(prev => [...prev, userMessage]);
-
-    setIsTextLoading(true);
-
-    // Use speech connection manager
-    if (!speechConnectionManagerRef.current) {
-      console.warn('Speech connection manager not initialized');
-      setIsTextLoading(false);
-      return;
-    }
-
-    const success = await speechConnectionManagerRef.current.sendMessage(message);
-    if (!success) {
-      console.warn('Failed to send speech message');
-      setIsTextLoading(false);
-      return;
-    }
-
-    // Set a timeout to reset loading state if audio doesn't start within 5 seconds
-    const timeoutId = setTimeout(() => {
-      console.warn('[AiChat] Speech response timeout - resetting loading state');
-      setIsTextLoading(false);
-    }, 5000);
-
-    // Store timeout ID to clear it when audio starts
-    (window as any).speechTimeoutId = timeoutId;
-  };
 
   // ============================================================================
   // CONNECTION INITIALIZATION
@@ -1249,13 +1183,10 @@ export default function AiChat() {
           <div className="max-w-4xl mx-auto">
             <UnifiedInput
               onSendMessage={handleTextMessage}
-              onSpeechMessage={handleSpeechMessage}
               isLoading={isTextLoading}
               placeholder="Send Message..."
               sharedWebSocket={textConnectionManagerRef.current?.getTextSocket()}
               isWebSocketConnected={textConnection.isConnected}
-              speechWebSocket={speechConnectionManagerRef.current?.getSpeechSocket()}
-              isSpeechWebSocketConnected={speechConnection.isConnected}
               onWebSocketReady={() => {
                 // WebSocket is ready for audio
               }}
