@@ -137,9 +137,9 @@ export class GeminiSpeechSocket {
             ? new TextDecoder('utf-8').decode(new Uint8Array(await event.data.arrayBuffer()))
             : event.data;
           await this.handleMessage(messageText);
-        } catch (error) {
-          console.error("[Speech WebSocket] Error processing message:", error);
-        }
+      } catch {
+        console.error("[Speech WebSocket] Error processing message");
+      }
       };
       this.ws.onerror = (error) => {
         // WebSocket errors are often not meaningful, just update connection state

@@ -44,7 +44,7 @@ export function useTaskCleanup() {
           }
         })
         .catch(() => {}) // Ignore errors during page unload
-      } catch (error) {
+      } catch {
         // Ignore errors during page unload
       }
       

@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { browserUseApi, CreateTaskRequest, GetTaskResponse, ListTasksResponse, UpdateTaskRequest } from '@/services/browserUseApi'
+import { browserUseApi, CreateTaskRequest, UpdateTaskRequest } from '@/services/browserUseApi'
 
 // ===== STATE MANAGEMENT =====
 export function useBrowserUseApi() {

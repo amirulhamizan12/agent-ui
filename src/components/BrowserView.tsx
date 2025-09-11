@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Monitor, Image, ExternalLink, Play, ChevronRight, X, StopCircle } from 'lucide-react'
+import { Monitor, Image as ImageIcon, ExternalLink, Play, ChevronRight, X, StopCircle } from 'lucide-react'
+import Image from 'next/image'
 import { useTask } from '@/context/TaskContext'
 import { useSessionManagement } from '@/hooks/useSessionManagement'
 
@@ -37,13 +38,6 @@ export default function BrowserView() {
   const currentStep = state.steps[currentStepIndex]
   const hasScreenshots = state.steps.some(step => step.screenshotUrl)
 
-  const handleStartSession = async () => {
-    try {
-      await createSession()
-    } catch (error) {
-      console.error('Failed to start session:', error)
-    }
-  }
 
 
   // Debug logging
@@ -214,10 +208,11 @@ export default function BrowserView() {
                     {/* Screenshot/Visual Area - Full Background */}
                     <div className="absolute inset-0 bg-white">
                       {currentStep?.screenshotUrl ? (
-                        <img
+                        <Image
                           src={currentStep.screenshotUrl}
                           alt={`Step ${currentStepIndex + 1} screenshot`}
-                          className="w-full h-full object-contain"
+                          fill
+                          className="object-contain"
                           onError={(e) => {
                             console.error('Failed to load screenshot:', currentStep.screenshotUrl)
                             e.currentTarget.style.display = 'none'
@@ -226,7 +221,7 @@ export default function BrowserView() {
                       ) : (
                         <div className="h-full flex items-center justify-center bg-gray-100">
                           <div className="text-center text-gray-500">
-                            <Image className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                            <ImageIcon className="w-12 h-12 mx-auto mb-2 opacity-50" />
                             <p className="text-sm">No screenshot available for this step</p>
                             {currentStep && (
                               <p className="text-xs mt-1 text-gray-400">

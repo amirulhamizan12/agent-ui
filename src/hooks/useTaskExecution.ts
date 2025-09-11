@@ -4,7 +4,7 @@ import { browserUseApi } from '@/services/browserUseApi'
 import { ChatMessage } from '@/context/TaskContext'
 
 // ===== UTILITY FUNCTIONS =====
-const generateMockSummary = (taskDescription: string = 'the requested task') => 
+const generateMockSummary = () => 
   `# Task Completion Summary
 
 ## Task Overview
@@ -26,32 +26,31 @@ const generateSummaryFromOutput = (taskData: { output?: string | null }): string
       
       // Generate specific summaries based on output content
       if (parsedOutput.company_overview?.name) {
-        return generateMockSummary(`analysis of ${parsedOutput.company_overview.name}`)
+        return generateMockSummary()
       }
       
       if (parsedOutput.products && Array.isArray(parsedOutput.products)) {
-        return generateMockSummary(`product search that found ${parsedOutput.products.length} items`)
+        return generateMockSummary()
       }
       
       if (parsedOutput.news && Array.isArray(parsedOutput.news)) {
-        return generateMockSummary(`news search that found ${parsedOutput.news.length} articles`)
+        return generateMockSummary()
       }
       
       // Check for any search results
       if (parsedOutput.search_results && Array.isArray(parsedOutput.search_results)) {
-        return generateMockSummary(`search that found ${parsedOutput.search_results.length} results`)
+        return generateMockSummary()
       }
       
       // Check for any data extraction
       if (Object.keys(parsedOutput).length > 0) {
-        const dataTypes = Object.keys(parsedOutput).join(', ')
-        return generateMockSummary(`data extraction covering: ${dataTypes}`)
+        return generateMockSummary()
       }
-    } catch (error) {
+    } catch {
       console.log('Could not parse structured output, using generic summary')
     }
   }
-  return generateMockSummary('the requested task')
+  return generateMockSummary()
 }
 
 
@@ -144,7 +143,7 @@ export function useTaskExecution() {
               } else if (typeof parsedOutput === 'string') {
                 completionContent = parsedOutput
               }
-            } catch (error) {
+            } catch {
               // If parsing fails, display raw output
               completionContent = taskData.output
             }
@@ -183,7 +182,7 @@ export function useTaskExecution() {
               } else {
                 statusContent = taskData.output
               }
-            } catch (error) {
+            } catch {
               statusContent = taskData.output
             }
           }
@@ -200,7 +199,7 @@ export function useTaskExecution() {
           }
           dispatch({ type: 'COMPLETE_TASK', summary: 'Task was stopped or failed.' })
         }
-      } catch (error) {
+      } catch {
         // Continue polling unless it's a persistent error
       }
     }, 3000) // Poll every 3 seconds

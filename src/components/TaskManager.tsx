@@ -5,10 +5,19 @@ import { useBrowserUseApi } from '@/hooks/useBrowserUseApi'
 import { TaskItem, browserUseApi } from '@/services/browserUseApi'
 
 export default function TaskManager() {
-  const { listTasks, getTask, stopTask, pauseTask, resumeTask, deleteSession, loading, error } = useBrowserUseApi()
+  const { listTasks, stopTask, pauseTask, resumeTask, deleteSession, loading, error } = useBrowserUseApi()
   const [tasks, setTasks] = useState<TaskItem[]>([])
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null)
-  const [taskDetails, setTaskDetails] = useState<any | null>(null)
+  const [taskDetails, setTaskDetails] = useState<{
+    steps?: Array<{
+      number: number;
+      nextGoal?: string;
+      url?: string;
+    }>;
+    liveUrl?: string | null;
+    publicShareUrl?: string | null;
+    output?: string | null;
+  } | null>(null)
   const [loadingTaskDetails, setLoadingTaskDetails] = useState(false)
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'finished' | 'stopped'>('all')
@@ -60,44 +69,6 @@ export default function TaskManager() {
     }
   }, [])
 
-  const handleTaskAction = useCallback(async (taskId: string, action: 'stop' | 'pause' | 'resume') => {
-    try {
-      console.log(`Performing ${action} action on task:`, taskId)
-      switch (action) {
-        case 'stop':
-          // Try to get task details first to get sessionId
-          try {
-            const taskData = await browserUseApi.getTask(taskId)
-            if (taskData.sessionId) {
-              console.log('Stopping by deleting session:', taskData.sessionId)
-              await deleteSession(taskData.sessionId)
-            } else {
-              console.log('No sessionId, using regular stop method')
-              await stopTask(taskId)
-            }
-          } catch (sessionError) {
-            console.log('Session deletion failed, trying regular stop:', sessionError)
-            await stopTask(taskId)
-          }
-          break
-        case 'pause':
-          await pauseTask(taskId)
-          break
-        case 'resume':
-          await resumeTask(taskId)
-          break
-      }
-      // Reload tasks after action
-      await loadTasks()
-      // Reload task details if this is the selected task
-      if (selectedTask?.id === taskId) {
-        await loadTaskDetails(taskId)
-      }
-    } catch (err) {
-      console.error(`Failed to ${action} task:`, err)
-      // You could add a toast notification here if you have one
-    }
-  }, [deleteSession, stopTask, pauseTask, resumeTask, loadTasks, loadTaskDetails, selectedTask?.id])
 
   useEffect(() => {
     loadTasks()
@@ -115,7 +86,6 @@ export default function TaskManager() {
     }
   }
 
-  const getStatusActions = (_status: string) => null
 
   const filteredTasks = tasks.filter((t) => {
     const matchesQuery = query.trim() === '' ? true : t.task.toLowerCase().includes(query.toLowerCase())
@@ -343,7 +313,7 @@ export default function TaskManager() {
                     <div>
                       <p className="text-sm text-gray-400 mb-1">Steps</p>
                       <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
-                        {[...taskDetails.steps].reverse().map((s: any) => (
+                        {[...taskDetails.steps].reverse().map((s) => (
                           <div key={s.number} className="bg-dark-300 rounded p-2">
                             <div className="flex items-center justify-between">
                               <span className="text-xs text-gray-400">Step {s.number}</span>

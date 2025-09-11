@@ -1,6 +1,6 @@
 "use client";
 import { useState, useRef, useEffect, useCallback, forwardRef, KeyboardEvent } from 'react';
-import { Mic, MicOff, Loader2, CheckCircle, Volume2, Square } from 'lucide-react';
+import { Mic, MicOff, Loader2, CheckCircle, Volume2 } from 'lucide-react';
 import { Base64 } from 'js-base64';
 import { 
   GeminiConnectionManager, 
@@ -732,7 +732,7 @@ export default function AiChat() {
   // UI CALLBACK HANDLERS
   // ============================================================================
 
-  const handleTextResponse = async (text: string) => {
+  const handleTextResponse = useCallback(async (text: string) => {
     // Show typing indicator
     setIsTyping(true);
     
@@ -811,9 +811,9 @@ export default function AiChat() {
     setIsTyping(false);
     setIsTextLoading(false);
 
-  };
+  }, [taskDispatch]);
 
-  const handleSpeechResponse = async (audioData: ArrayBuffer) => {
+  const handleSpeechResponse = async () => {
     console.log('[AiChat] Received speech response, playing audio...');
     
     // Stop the typing indicator immediately when audio is received
@@ -828,9 +828,9 @@ export default function AiChat() {
   const handleAudioStart = () => {
     console.log('[AiChat] Audio streaming started');
     // Clear any pending timeout
-    if ((window as any).speechTimeoutId) {
-      clearTimeout((window as any).speechTimeoutId);
-      (window as any).speechTimeoutId = null;
+    if ((window as unknown as { speechTimeoutId?: NodeJS.Timeout }).speechTimeoutId) {
+      clearTimeout((window as unknown as { speechTimeoutId: NodeJS.Timeout }).speechTimeoutId);
+      (window as unknown as { speechTimeoutId?: NodeJS.Timeout }).speechTimeoutId = undefined;
     }
     // Stop the typing indicator when audio starts
     setIsTyping(false);
@@ -840,9 +840,9 @@ export default function AiChat() {
   const handleAudioEnd = () => {
     console.log('[AiChat] Audio streaming ended');
     // Clear any pending timeout
-    if ((window as any).speechTimeoutId) {
-      clearTimeout((window as any).speechTimeoutId);
-      (window as any).speechTimeoutId = null;
+    if ((window as unknown as { speechTimeoutId?: NodeJS.Timeout }).speechTimeoutId) {
+      clearTimeout((window as unknown as { speechTimeoutId: NodeJS.Timeout }).speechTimeoutId);
+      (window as unknown as { speechTimeoutId?: NodeJS.Timeout }).speechTimeoutId = undefined;
     }
     // Ensure loading state is reset when audio ends
     setIsTextLoading(false);
@@ -851,7 +851,7 @@ export default function AiChat() {
     setSpeakingMessageId(null);
   };
 
-  const handleSpeakMessage = async (messageId: string, text: string) => {
+  const handleSpeakMessage = useCallback(async (messageId: string, text: string) => {
     if (!speechConnectionManagerRef.current || isSpeaking) {
       console.warn('Speech not available or already speaking');
       return;
@@ -874,7 +874,7 @@ export default function AiChat() {
       setIsSpeaking(false);
       setSpeakingMessageId(null);
     }
-  };
+  }, [isSpeaking]);
 
   const handleStopSpeaking = () => {
     if (speechConnectionManagerRef.current) {
@@ -951,14 +951,14 @@ export default function AiChat() {
     // Cleanup on unmount
     return () => {
       // Clear any pending speech timeout
-      if ((window as any).speechTimeoutId) {
-        clearTimeout((window as any).speechTimeoutId);
-        (window as any).speechTimeoutId = null;
+      if ((window as unknown as { speechTimeoutId?: NodeJS.Timeout }).speechTimeoutId) {
+        clearTimeout((window as unknown as { speechTimeoutId: NodeJS.Timeout }).speechTimeoutId);
+        (window as unknown as { speechTimeoutId?: NodeJS.Timeout }).speechTimeoutId = undefined;
       }
       textConnectionManagerRef.current?.cleanup();
       speechConnectionManagerRef.current?.cleanup();
     };
-  }, []);
+  }, [handleTextResponse]);
 
   // ============================================================================
   // SCROLL TO BOTTOM WHEN MESSAGES CHANGE
@@ -996,7 +996,7 @@ export default function AiChat() {
         }
       }
     }
-  }, [messages, autoSpeechEnabled, isSpeaking, autoSpokenMessageIds]);
+  }, [messages, autoSpeechEnabled, isSpeaking, autoSpokenMessageIds, handleSpeakMessage]);
 
   // Clear auto-spoken tracking when auto speech is disabled
   useEffect(() => {

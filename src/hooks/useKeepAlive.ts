@@ -31,7 +31,7 @@ export function useKeepAlive() {
         if (state.taskId) {
           await browserUseApi.getTaskStatus(state.taskId)
         }
-      } catch (error) {
+      } catch {
         // Silently ignore keep-alive failures
       }
     }, 30 * 1000) // Ping every 30 seconds
