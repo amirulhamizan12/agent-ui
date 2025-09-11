@@ -1,10 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { ClipboardList, Bot } from 'lucide-react'
+import { ClipboardList, Bot, Volume2 } from 'lucide-react'
 import BrowserView from '@/components/BrowserView'
 import TaskManager from '@/components/TaskManager'
 import AiChat from '@/components/AiChat'
+import TTSRealtime from '@/components/TTSRealtime'
 import { TaskProvider } from '@/context/TaskContext'
 import { useTaskExecution } from '@/hooks/useTaskExecution'
 import { useTaskCleanup } from '@/hooks/useTaskCleanup'
@@ -12,7 +13,7 @@ import { useKeepAlive } from '@/hooks/useKeepAlive'
 
 
 function AppContent() {
-  const [activeTab, setActiveTab] = useState<'tasks' | 'ai-chat'>('ai-chat')
+  const [activeTab, setActiveTab] = useState<'tasks' | 'ai-chat' | 'tts-realtime'>('ai-chat')
   useTaskExecution()
   useTaskCleanup()
   useKeepAlive()
@@ -51,6 +52,20 @@ function AppContent() {
               <ClipboardList className="w-6 h-6" />
             </button>
           </div>
+
+          {/* TTS Realtime Tab */}
+          <div className="relative group">
+            <button
+              onClick={() => setActiveTab('tts-realtime')}
+              className={`relative w-11 h-11 rounded-2xl transition-all duration-200 flex items-center justify-center group ${
+                activeTab === 'tts-realtime'
+                  ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/25'
+                  : 'bg-dark-300 text-gray-400 hover:bg-orange-500 hover:text-white hover:rounded-xl'
+              }`}
+            >
+              <Volume2 className="w-6 h-6" />
+            </button>
+          </div>
         </div>
 
         {/* Separator */}
@@ -67,6 +82,10 @@ function AppContent() {
         {activeTab === 'tasks' ? (
           <div className="flex-1 overflow-auto">
             <TaskManager />
+          </div>
+        ) : activeTab === 'tts-realtime' ? (
+          <div className="flex-1 overflow-auto">
+            <TTSRealtime />
           </div>
         ) : (
           <div className="flex flex-col lg:flex-row flex-1">
