@@ -111,8 +111,8 @@ export function useTaskExecution() {
           clearPolling()
           const summary = generateSummaryFromOutput(taskData)
           
-          // Create completion message with output
-          let completionContent = '✅ **Task Completed Successfully!**\n\nThe automation task has finished executing all steps.'
+          // Only show the actual AI response/output, no default completion text
+          let completionContent = ''
           
           // Add output if available
           if (taskData.output) {
@@ -121,8 +121,6 @@ export function useTaskExecution() {
               
               // Handle different output formats
               if (typeof parsedOutput === 'object' && parsedOutput !== null) {
-                completionContent += '\n\n📋 **Results:**\n'
-                
                 // Display structured output
                 if (parsedOutput.company_overview?.name) {
                   completionContent += `• **Company:** ${parsedOutput.company_overview.name}\n`
@@ -144,21 +142,24 @@ export function useTaskExecution() {
                   }
                 })
               } else if (typeof parsedOutput === 'string') {
-                completionContent += `\n\n📋 **Results:**\n${parsedOutput}`
+                completionContent = parsedOutput
               }
             } catch (error) {
               // If parsing fails, display raw output
-              completionContent += `\n\n📋 **Results:**\n${taskData.output}`
+              completionContent = taskData.output
             }
           }
           
-          const completionMessage: ChatMessage = {
-            id: `completion-${Date.now()}`,
-            type: 'ai',
-            content: completionContent,
-            timestamp: new Date()
+          // Only add completion message if there's actual content
+          if (completionContent.trim()) {
+            const completionMessage: ChatMessage = {
+              id: `completion-${Date.now()}`,
+              type: 'ai',
+              content: completionContent,
+              timestamp: new Date()
+            }
+            dispatch({ type: 'ADD_CHAT_MESSAGE', message: completionMessage })
           }
-          dispatch({ type: 'ADD_CHAT_MESSAGE', message: completionMessage })
           dispatch({ type: 'COMPLETE_TASK', summary })
         }
         
@@ -166,13 +167,11 @@ export function useTaskExecution() {
         if (taskData.status === 'failed' || taskData.status === 'stopped') {
           clearPolling()
           
-          let statusContent = taskData.status === 'failed' 
-            ? '❌ **Task Failed**\n\nThe automation task encountered an error and could not complete.'
-            : '⏹️ **Task Stopped**\n\nThe automation task was stopped.'
+          // Only show the actual output, no default failure/stop text
+          let statusContent = ''
           
           // Add output if available, even for failed tasks
           if (taskData.output) {
-            statusContent += '\n\n📋 **Partial Results:**\n'
             try {
               const parsedOutput = typeof taskData.output === 'string' ? JSON.parse(taskData.output) : taskData.output
               if (typeof parsedOutput === 'object' && parsedOutput !== null) {
@@ -182,20 +181,23 @@ export function useTaskExecution() {
                   }
                 })
               } else {
-                statusContent += taskData.output
+                statusContent = taskData.output
               }
             } catch (error) {
-              statusContent += taskData.output
+              statusContent = taskData.output
             }
           }
           
-          const statusMessage: ChatMessage = {
-            id: `status-${Date.now()}`,
-            type: 'system',
-            content: statusContent,
-            timestamp: new Date()
+          // Only add status message if there's actual content
+          if (statusContent.trim()) {
+            const statusMessage: ChatMessage = {
+              id: `status-${Date.now()}`,
+              type: 'system',
+              content: statusContent,
+              timestamp: new Date()
+            }
+            dispatch({ type: 'ADD_CHAT_MESSAGE', message: statusMessage })
           }
-          dispatch({ type: 'ADD_CHAT_MESSAGE', message: statusMessage })
           dispatch({ type: 'COMPLETE_TASK', summary: 'Task was stopped or failed.' })
         }
       } catch (error) {
@@ -217,13 +219,6 @@ export function useTaskExecution() {
     if (state.taskId && state.isRunning) {
       lastStepCountRef.current = 0
 
-      const startMessage: ChatMessage = {
-        id: `start-${Date.now()}`,
-        type: 'ai',
-        content: '🚀 **Starting Automation Task**\n\nI\'m now executing your request. You\'ll see each step as it happens below.',
-        timestamp: new Date()
-      }
-      dispatch({ type: 'ADD_CHAT_MESSAGE', message: startMessage })
       startPolling(state.taskId)
     } else if (!state.isRunning && pollingIntervalRef.current) {
       clearPolling()

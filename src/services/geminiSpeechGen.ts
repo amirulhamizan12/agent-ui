@@ -32,6 +32,8 @@ export interface GeminiManagerConfig {
   onAudioResponse: (audioData: ArrayBuffer) => void;
   onSpeechConnectionChange: (state: ConnectionState) => void;
   onSetupComplete?: () => void;
+  onAudioStart?: () => void;
+  onAudioEnd?: () => void;
 }
 
 // ============================================================================
@@ -46,6 +48,8 @@ export class GeminiSpeechSocket {
   private onAudioCallback: ((audioData: ArrayBuffer) => void) | null = null;
   private onSetupCompleteCallback: (() => void) | null = null;
   private onConnectionStateChange: ((state: ConnectionState) => void) | null = null;
+  private onAudioStartCallback: (() => void) | null = null;
+  private onAudioEndCallback: (() => void) | null = null;
   
   // Connection management
   private connectionState: ConnectionState = { isConnected: false, isConnecting: false, connectionAttempts: 0 };
@@ -74,11 +78,15 @@ export class GeminiSpeechSocket {
   constructor(
     onAudio: (audioData: ArrayBuffer) => void,
     onSetupComplete: () => void,
-    onConnectionStateChange?: (state: ConnectionState) => void
+    onConnectionStateChange?: (state: ConnectionState) => void,
+    onAudioStart?: () => void,
+    onAudioEnd?: () => void
   ) {
     this.onAudioCallback = onAudio;
     this.onSetupCompleteCallback = onSetupComplete;
     this.onConnectionStateChange = onConnectionStateChange || null;
+    this.onAudioStartCallback = onAudioStart || null;
+    this.onAudioEndCallback = onAudioEnd || null;
     this.initializeAudioSystem();
   }
 
@@ -167,7 +175,18 @@ export class GeminiSpeechSocket {
       setup: {
         model: MODEL,
         system_instruction: {
-          parts: [{ text: `You are a student whose only job is to repeat exactly what you hear in a cheerful, friendly, and engaging tone. You must repeat the text you receive word-for-word without changing anything. Don't add anything, don't remove anything, don't fix anything - just repeat it exactly as given.` }]
+          parts: [{ text: `You are a TEXT-TO-SPEECH service. Your ONLY job is to repeat the input text word-for-word with ZERO modifications. This is a CRITICAL system where accuracy is paramount - any deviation from the exact input text can cause serious miscommunication, system failures, or even life-threatening situations. 
+
+STRICT RULES:
+- Repeat the text EXACTLY as received
+- Do NOT add any words, phrases, or explanations
+- Do NOT remove any words, characters, or punctuation
+- Do NOT fix grammar, spelling, or formatting
+- Do NOT change tone, emphasis, or pronunciation cues
+- Do NOT add greetings, farewells, or conversational elements
+- Do NOT interpret or paraphrase the content
+
+This is a hard rule that must be followed with 100% accuracy. Any deviation from the exact input text is unacceptable and can cause catastrophic communication failures.` }]
         },
         generation_config: {
           temperature: 0,
@@ -204,6 +223,11 @@ export class GeminiSpeechSocket {
       // Ensure audio context is running
       if (this.audioContext.state === 'suspended') {
         await this.audioContext.resume();
+      }
+
+      // Notify that audio has started (only on first chunk)
+      if (this.accumulatedPcmData.length === 0) {
+        this.onAudioStartCallback?.();
       }
 
       // Convert base64 PCM data to Float32Array
@@ -323,17 +347,12 @@ export class GeminiSpeechSocket {
         }
       }
 
-      if (messageData.serverContent?.turnComplete === true && this.accumulatedPcmData.length > 0) {
-        try {
-          const fullPcmData = this.accumulatedPcmData.join('');
-          const wavData = await pcmToWav(fullPcmData, 24000);
-          this.onAudioCallback?.(Uint8Array.from(atob(wavData), c => c.charCodeAt(0)).buffer);
-          this.accumulatedPcmData = [];
-          // Stop playback when turn is complete
-          this.stopCurrentAudio();
-        } catch (error) {
-          console.error("[Speech WebSocket] Transcription error:", error);
-        }
+      if (messageData.serverContent?.turnComplete === true) {
+        // Turn is complete - notify that audio has ended
+        this.onAudioEndCallback?.();
+        this.accumulatedPcmData = [];
+        this.stopCurrentAudio();
+        console.log('[GeminiSpeechSocket] Audio turn complete - real-time streaming finished');
       }
     } catch (error) {
       console.error("[Speech WebSocket] Error parsing message:", error);
@@ -469,7 +488,9 @@ export class GeminiConnectionManager {
             console.log('[GeminiManager] Speech socket setup complete');
             resolve();
           },
-          this.config.onSpeechConnectionChange
+          this.config.onSpeechConnectionChange,
+          this.config.onAudioStart,
+          this.config.onAudioEnd
         );
         
         // Start connection immediately
