@@ -1,10 +1,6 @@
 <div align="center">
 
-<img width="1661" height="403" alt="Browser Use" src="https://github.com/user-attachments/assets/a56f8da9-cbe3-46ed-a0c2-a60606609c6f" />
-
----
-
-# Realtime Studio — Voice-Driven Browser‑Use Agent (for #nicehack69)
+<img width="1698" height="403" alt="Browser Use (2)" src="https://github.com/user-attachments/assets/1ab29f98-c0b9-48fe-bc30-b905a010cb9a" />
 
 ---
 
@@ -20,82 +16,6 @@
 
 </div>
 
-## 🌟 The 30‑second pitch
-
-You speak. The agent navigates the web through Browser‑Use, clicks buttons, fills forms, scrapes results, and returns artifacts you can share — PRs, GitHub comments, bookings, and reports. It’s a voice‑first control plane for the browser that turns "do this online" into done.
-
-## 🚀 What we built (and why it matters)
-
-Realtime Studio is a production‑quality, voice‑driven Browser‑Use agent. It blends live speech understanding (Gemini) with real browser control (Browser‑Use v2) and a clear operator UI so judges can watch the agent work, step by step, and verify outcomes.
-
-### 🎯 Core capabilities
-- **Voice‑in, Action‑out**: Live mic streaming to Gemini; the model emits explicit action tags; Browser‑Use executes them.
-- **True browser control**: Sessions, live view, highlight elements, vision, screenshots, and resilient stop/resume.
-- **Outcome artifacts**: The UI aggregates steps and output into shareable reports — designed for PRs/issues and demo clips.
-
-
-## 🎬 Flagship demos (judge‑friendly and viral‑ready)
-
-### 1) Accessibility Fixer Agent → audits and opens a PR
-- You say: "Audit `example.com` and fix low‑hanging issues."
-- Agent does: navigate a11y tools, capture issues, fork repo via GitHub web, apply simple fixes (alt/aria/heading), open a **PR**, attach a **report** with screenshots.
-- Judge sees: live steps, a clean report, and a real PR link.
-
-### 2) Bug Reproducer & Issue Filer → reproduces, records, comments
-- You say: "Reproduce this GitHub issue and post evidence." (paste issue URL)
-- Agent does: follow steps, record console/network + screenshots, compile a **markdown report**, and **comment back on the issue** with artifacts.
-- Judge sees: reliable repro, clear evidence, and a live issue comment link.
-
-## 🔮 The Bigger Picture: Towards General AI Agents
-
-This project is just the **beginning**. Inspired by groundbreaking AI agents like [Manus AI](https://www.manusai.io) and [Loveable](https://loveable.dev), we're building toward something much bigger:
-
-### **Phase 1: Realtime Studio** ✅
-*Current implementation - voice commands for web automation*
-
-### **Phase 2: Multi-Platform AI Agent** 🚧
-*Integration with mobile apps, desktop software, and IoT devices*
-
-### **Phase 3: General Purpose AI Assistant** 🔮
-*Autonomous task planning and execution across all digital platforms*
-
-### **The Vision: Your Personal AI Co-Pilot**
-Imagine an AI that doesn't just respond to commands, but **anticipates your needs**:
-
-- **Proactive Assistance**: "I noticed you're researching laptops - here are 3 deals that just went live"
-- **Cross-Platform Intelligence**: "I've updated your calendar, booked your flight, and sent the confirmation to your team"
-- **Learning & Adaptation**: "Based on your preferences, I've found a new restaurant you'll love"
-
-## 🏆 Why this wins #nicehack69
-
-- **Dreams big, delivers now**: Voice‑first assistants are inevitable; this one already turns speech into verifiable web outcomes.
-- **Core to Browser‑Use**: Sessions, tasks, live control, and step telemetry showcase the SDK’s strengths (and surface feedback).
-- **No bullshit**: If a text model alone could do it, we didn’t build it. Every demo ends with a shareable artifact (PR, issue, or report).
-- **Judge‑ready UX**: Live iframe, step gallery, status indicators, and exportable results make the demo obvious and compelling.
-
-## 🛠 How it works (under the hood)
-
-### **Architecture Overview**
-- **Frontend**: Next.js 15 with TypeScript and Tailwind CSS
-- **Speech + Text**: Gemini 2.0 Flash Live over WebSockets for low‑latency input/output
-- **Browser Automation**: Browser‑Use API v2 for intelligent web interaction
-- **Audio Processing**: Custom Web Audio API worklets for real‑time streaming
-- **State Management**: React Context with sophisticated task orchestration
-
-### **Key Features**
-- 🎤 **Real-time Voice Input**: Continuous speech recognition with visual feedback
-- 🧠 **Intelligent Action Parsing**: AI-powered command interpretation and task planning
-- 🌐 **Live Browser Automation**: Real-time web interaction with step-by-step visualization
-- 🔊 **Natural Voice Responses**: High-quality text-to-speech with multiple voice options
-- 📱 **Responsive Design**: Seamless experience across desktop and mobile devices
-- ⚡ **Performance Optimized**: Efficient WebSocket connections and audio streaming
-
-### **Browser-Use Integration**
-Our implementation showcases Browser‑Use's full potential:
-- **Session Management**: Persistent browser sessions for complex multi‑step tasks
-- **Real‑time Monitoring**: Live view of automation progress with step‑by‑step breakdown
-- **Error Handling**: Robust error recovery and user feedback systems
-- **Scalable Architecture**: Designed to handle concurrent users and complex workflows
 
 ## 🚀 Getting Started
 
