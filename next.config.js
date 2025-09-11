@@ -2,6 +2,14 @@
 const nextConfig = {
   // App Router is now stable in Next.js 14, no experimental flag needed
   transpilePackages: ['lucide-react'],
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'cdn.browser-use.com',
+      },
+    ],
+  },
   
   // Better compatibility with Yarn PnP
   webpack: (config, { isServer }) => {
