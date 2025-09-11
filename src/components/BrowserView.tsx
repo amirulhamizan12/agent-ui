@@ -92,18 +92,6 @@ export default function BrowserView() {
             </div>
           </div>
           <div className="flex items-center space-x-2">
-            {/* Start Session Button */}
-            {sessionStatus === 'none' && (
-              <button
-                onClick={handleStartSession}
-                disabled={sessionStatus !== 'none'}
-                className="flex items-center space-x-2 bg-primary hover:bg-primary/90 disabled:bg-gray-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg transition-colors"
-                title="Start a new browser session"
-              >
-                <Play className="w-4 h-4" />
-                <span className="text-sm font-medium">Start Session</span>
-              </button>
-            )}
 
             {/* Stop Session Button */}
             {sessionId && sessionStatus === 'active' && (

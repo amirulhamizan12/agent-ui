@@ -4,6 +4,21 @@ import { TaskStep } from '@/context/TaskContext';
 
 // ========== MESSAGE COMPONENTS ==========
 
+// Helper function to format bold text
+const formatBoldText = (text: string) => {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g)
+  return parts.map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return (
+        <strong key={index} className="font-semibold">
+          {part.replace(/\*\*/g, '')}
+        </strong>
+      )
+    }
+    return part
+  })
+}
+
 // Base Message Interface
 export interface MessageProps {
   text: string;
@@ -17,7 +32,7 @@ export const HumanMessage = ({ text, timestamp }: MessageProps) => (
     <div className="max-w-[85%] lg:max-w-[75%]">
       <div className="bg-gradient-to-br from-orange-500 to-orange-600 text-white px-4 py-3 rounded-2xl rounded-br-md shadow-lg">
         <div className="text-sm leading-relaxed break-words">
-          {text}
+          {formatBoldText(text)}
         </div>
       </div>
       <div className="mt-1 text-xs text-gray-400 text-right mr-1">
@@ -55,33 +70,17 @@ export const AiMessage = ({ text, timestamp }: MessageProps) => {
                 return (
                   <div key={index} className="flex items-start gap-2 my-1">
                     <div className="w-1.5 h-1.5 bg-current rounded-full mt-2 flex-shrink-0"></div>
-                    <span className="flex-1">{line.substring(2)}</span>
+                    <span className="flex-1">
+                      {formatBoldText(line.substring(2))}
+                    </span>
                   </div>
                 )
               }
-              // Handle bold text
-              else if (line.includes('**') && line.includes(':**')) {
-                const parts = line.split(/(\*\*[^*]+\*\*)/g)
-                return (
-                  <div key={index} className="my-1">
-                    {parts.map((part, partIndex) => {
-                      if (part.startsWith('**') && part.endsWith('**')) {
-                        return (
-                          <strong key={partIndex} className="font-semibold">
-                            {part.replace(/\*\*/g, '')}
-                          </strong>
-                        )
-                      }
-                      return part
-                    })}
-                  </div>
-                )
-              }
-              // Regular lines
+              // Regular lines with bold formatting
               else {
                 return (
                   <div key={index} className={line.trim() === '' ? 'h-2' : 'my-1'}>
-                    {line}
+                    {formatBoldText(line)}
                   </div>
                 )
               }
@@ -141,8 +140,8 @@ export const StepMessage = ({ step, stepNumber, timestamp }: { step: TaskStep; s
 
   return (
     <div className="flex justify-start mb-4">
-      <div className="max-w-[85%] lg:max-w-[75%]">
-        <div className="bg-gradient-to-br from-green-900/40 to-green-800/40 border-green-500/40 text-green-100 px-4 py-3 rounded-2xl rounded-bl-md shadow-lg border">
+      <div className="w-full">
+        <div className="bg-gradient-to-br from-green-900/40 to-green-800/40 border-green-500/40 text-green-100 px-4 py-3 rounded-lg shadow-lg border">
           <div className="flex items-start gap-3">
             {/* Step Number and Checkmark */}
             <div className="flex-shrink-0 mt-0.5">
@@ -218,7 +217,7 @@ export const BrowserOutputMessage = ({ output, timestamp }: { output: string; ti
           </div>
         </div>
         <div className="text-sm leading-relaxed break-words">
-          {output}
+          {formatBoldText(output)}
         </div>
       </div>
       <div className="mt-1 text-xs text-gray-400 text-left ml-1">

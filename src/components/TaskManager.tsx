@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useBrowserUseApi } from '@/hooks/useBrowserUseApi'
-import { TaskItem, browserUseApi } from '@/lib/browserUseApi'
+import { TaskItem, browserUseApi } from '@/services/browserUseApi'
 
 export default function TaskManager() {
   const { listTasks, getTask, stopTask, pauseTask, resumeTask, deleteSession, loading, error } = useBrowserUseApi()

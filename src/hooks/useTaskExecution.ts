@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { useTask } from '@/context/TaskContext'
-import { browserUseApi } from '@/lib/browserUseApi'
+import { browserUseApi } from '@/services/browserUseApi'
 import { ChatMessage } from '@/context/TaskContext'
 
 // ===== UTILITY FUNCTIONS =====

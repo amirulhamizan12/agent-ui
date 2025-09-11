@@ -1,7 +1,7 @@
 // Action Processor Service
 // Handles execution of browser actions
 
-import { browserUseApi } from '@/lib/browserUseApi'
+import { browserUseApi } from '@/services/browserUseApi'
 import { ParsedAction } from './actionParser'
 
 export interface ActionProcessorResult {

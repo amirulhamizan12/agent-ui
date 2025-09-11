@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useTask } from '@/context/TaskContext'
-import { browserUseApi } from '@/lib/browserUseApi'
+import { browserUseApi } from '@/services/browserUseApi'
 
 // ===== KEEP-ALIVE HOOK =====
 export function useKeepAlive() {
