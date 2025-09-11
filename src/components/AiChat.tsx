@@ -678,7 +678,7 @@ export default function AiChat() {
   const [isTyping, setIsTyping] = useState(false);
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null);
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [autoSpeechEnabled, setAutoSpeechEnabled] = useState(false);
+  const [autoSpeechEnabled, setAutoSpeechEnabled] = useState(true);
   const [autoSpokenMessageIds, setAutoSpokenMessageIds] = useState<Set<string>>(new Set());
 
   // Connection state
@@ -981,18 +981,13 @@ export default function AiChat() {
       if (latestMessage && latestMessage.type === 'gemini' && latestMessage.text && latestMessage.id) {
         // Check if this message has already been auto-spoken
         if (!autoSpokenMessageIds.has(latestMessage.id)) {
-          // Use a small delay to ensure the message is rendered first
-          const timeoutId = setTimeout(() => {
-            // Mark this message as auto-spoken before speaking
-            setAutoSpokenMessageIds(prev => {
-              const newSet = new Set(prev);
-              newSet.add(latestMessage.id!);
-              return newSet;
-            });
-            handleSpeakMessage(latestMessage.id!, latestMessage.text);
-          }, 500);
-
-          return () => clearTimeout(timeoutId);
+          // Mark this message as auto-spoken before speaking
+          setAutoSpokenMessageIds(prev => {
+            const newSet = new Set(prev);
+            newSet.add(latestMessage.id!);
+            return newSet;
+          });
+          handleSpeakMessage(latestMessage.id!, latestMessage.text);
         }
       }
     }

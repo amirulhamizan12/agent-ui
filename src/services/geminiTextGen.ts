@@ -367,7 +367,7 @@ export class GeminiConnectionManager {
         this.textAccumulator = '';
       }
       this.responseTimeout = null;
-    }, 500);
+    }, 100);
   }
 
   // ============================================================================
