@@ -121,31 +121,16 @@ interface TaskStatusResponse {
 }
 
 class BrowserUseApiClient {
-  private apiKey: string
-  private baseUrl: string = 'https://api.browser-use.com/api/v2'
-
-  constructor() {
-    // Get API key from environment variable
-    this.apiKey = process.env.NEXT_PUBLIC_BROWSER_USE_API_KEY || ''
-    
-    if (!this.apiKey) {
-      console.warn('Browser Use API key not found. Please set NEXT_PUBLIC_BROWSER_USE_API_KEY environment variable.')
-    }
-  }
+  private baseUrl: string = '/api/browser-use'
 
   private getHeaders() {
     return {
-      'X-Browser-Use-API-Key': this.apiKey,
       'Content-Type': 'application/json',
     }
   }
 
   // New API v2 methods
   async createSession(requestData: CreateSessionRequest = {}): Promise<CreateSessionResponse> {
-    if (!this.apiKey) {
-      throw new Error('Browser Use API key not configured. Please set NEXT_PUBLIC_BROWSER_USE_API_KEY environment variable.')
-    }
-
     const response = await fetch(`${this.baseUrl}/sessions`, {
       method: 'POST',
       headers: this.getHeaders(),
@@ -166,10 +151,6 @@ class BrowserUseApiClient {
   }
 
   async createTask(requestData: CreateTaskRequest): Promise<CreateTaskResponse> {
-    if (!this.apiKey) {
-      throw new Error('Browser Use API key not configured. Please set NEXT_PUBLIC_BROWSER_USE_API_KEY environment variable.')
-    }
-
     const response = await fetch(`${this.baseUrl}/tasks`, {
       method: 'POST',
       headers: this.getHeaders(),
@@ -197,10 +178,6 @@ class BrowserUseApiClient {
     after?: string
     before?: string
   }): Promise<ListTasksResponse> {
-    if (!this.apiKey) {
-      throw new Error('Browser Use API key not configured. Please set NEXT_PUBLIC_BROWSER_USE_API_KEY environment variable.')
-    }
-
     const searchParams = new URLSearchParams()
     if (params?.pageSize) searchParams.append('pageSize', params.pageSize.toString())
     if (params?.pageNumber) searchParams.append('pageNumber', params.pageNumber.toString())
@@ -229,10 +206,6 @@ class BrowserUseApiClient {
   }
 
   async getTask(taskId: string): Promise<GetTaskResponse> {
-    if (!this.apiKey) {
-      throw new Error('Browser Use API key not configured. Please set NEXT_PUBLIC_BROWSER_USE_API_KEY environment variable.')
-    }
-
     const response = await fetch(`${this.baseUrl}/tasks/${taskId}`, {
       headers: this.getHeaders(),
     })
@@ -253,10 +226,6 @@ class BrowserUseApiClient {
   }
 
   async updateTask(taskId: string, requestData: UpdateTaskRequest): Promise<GetTaskResponse> {
-    if (!this.apiKey) {
-      throw new Error('Browser Use API key not configured. Please set NEXT_PUBLIC_BROWSER_USE_API_KEY environment variable.')
-    }
-
     const response = await fetch(`${this.baseUrl}/tasks/${taskId}`, {
       method: 'PATCH',
       headers: this.getHeaders(),
@@ -277,10 +246,6 @@ class BrowserUseApiClient {
   }
 
   async deleteSession(sessionId: string): Promise<void> {
-    if (!this.apiKey) {
-      throw new Error('Browser Use API key not configured. Please set NEXT_PUBLIC_BROWSER_USE_API_KEY environment variable.')
-    }
-
     try {
       const response = await fetch(`${this.baseUrl}/sessions/${sessionId}`, {
         method: 'DELETE',
@@ -345,10 +310,6 @@ class BrowserUseApiClient {
 
   // Legacy method for backward compatibility
   async startTask(requestData: StartTaskRequest): Promise<StartTaskResponse> {
-    if (!this.apiKey) {
-      throw new Error('Browser Use API key not configured. Please set NEXT_PUBLIC_BROWSER_USE_API_KEY environment variable.')
-    }
-
     // Convert legacy request to new API format
     const createTaskRequest: CreateTaskRequest = {
       task: requestData.prompt,
@@ -372,10 +333,6 @@ class BrowserUseApiClient {
 
   // Legacy method for backward compatibility
   async getTaskStatus(taskId: string): Promise<TaskStatusResponse> {
-    if (!this.apiKey) {
-      throw new Error('Browser Use API key not configured. Please set NEXT_PUBLIC_BROWSER_USE_API_KEY environment variable.')
-    }
-
     const responseData = await this.getTask(taskId)
 
     // Convert new API response to legacy format
@@ -397,10 +354,6 @@ class BrowserUseApiClient {
 
   // Legacy method for backward compatibility
   async stopTask(taskId: string): Promise<{ message: string; taskId: string }> {
-    if (!this.apiKey) {
-      throw new Error('Browser Use API key not configured. Please set NEXT_PUBLIC_BROWSER_USE_API_KEY environment variable.')
-    }
-
     try {
       // First, try to get the task to get the sessionId
       const taskData = await this.getTask(taskId)

@@ -8,7 +8,7 @@ import { useSessionManagement } from '@/hooks/useSessionManagement'
 
 export default function BrowserView() {
   const { state } = useTask()
-  const { sessionStatus, sessionId, sessionLiveUrl, stopSession, createSession } = useSessionManagement()
+  const { sessionStatus, sessionId, sessionLiveUrl, stopSession } = useSessionManagement()
   const [isLive, setIsLive] = useState(false)
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
   const [showLiveView, setShowLiveView] = useState(false)

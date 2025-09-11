@@ -45,7 +45,7 @@ npm run dev
 ### **Environment Variables**
 ```env
 NEXT_PUBLIC_GEMINI_API_KEY=your_gemini_api_key
-NEXT_PUBLIC_BROWSER_USE_API_KEY=your_browser_use_api_key
+BROWSER_USE_API_KEY=your_browser_use_api_key
 ```
 
 

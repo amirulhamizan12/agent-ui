@@ -433,7 +433,7 @@ const UnifiedInput = ({
   placeholder = "Send Message...",
   sharedWebSocket,
   isWebSocketConnected,
-  onWebSocketReady: _onWebSocketReady
+  onWebSocketReady
 }: TextInputProps & {
   sharedWebSocket?: TextWebSocket | null;
   isWebSocketConnected?: boolean;

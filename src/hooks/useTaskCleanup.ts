@@ -11,15 +11,13 @@ export function useTaskCleanup() {
     const handleBeforeUnload = async () => {
       if (!state.isRunning || !state.taskId || hasStoppedRef.current) return
       
-      const apiKey = process.env.NEXT_PUBLIC_BROWSER_USE_API_KEY || ''
       const headers = {
-        'X-Browser-Use-API-Key': apiKey,
         'Content-Type': 'application/json',
       }
       
       try {
         // Try to get sessionId first, then delete session
-        fetch(`https://api.browser-use.com/api/v2/tasks/${state.taskId}`, {
+        fetch(`/api/browser-use/tasks/${state.taskId}`, {
           method: 'GET',
           headers,
           keepalive: true
@@ -28,14 +26,14 @@ export function useTaskCleanup() {
         .then(data => {
           if (data.sessionId) {
             // Delete session for more effective stopping
-            fetch(`https://api.browser-use.com/api/v2/sessions/${data.sessionId}`, {
+            fetch(`/api/browser-use/sessions/${data.sessionId}`, {
               method: 'DELETE',
               headers,
               keepalive: true
             }).catch(() => {}) // Ignore errors during page unload
           } else {
             // Fallback to task update
-            fetch(`https://api.browser-use.com/api/v2/tasks/${state.taskId}`, {
+            fetch(`/api/browser-use/tasks/${state.taskId}`, {
               method: 'PATCH',
               headers,
               body: JSON.stringify({ action: 'stop' }),

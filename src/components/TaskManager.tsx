@@ -5,7 +5,7 @@ import { useBrowserUseApi } from '@/hooks/useBrowserUseApi'
 import { TaskItem, browserUseApi } from '@/services/browserUseApi'
 
 export default function TaskManager() {
-  const { listTasks, stopTask, pauseTask, resumeTask, deleteSession, loading, error } = useBrowserUseApi()
+  const { listTasks, loading, error } = useBrowserUseApi()
   const [tasks, setTasks] = useState<TaskItem[]>([])
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null)
   const [taskDetails, setTaskDetails] = useState<{
