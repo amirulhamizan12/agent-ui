@@ -21,6 +21,7 @@ export interface Message {
   type: 'human' | 'gemini';
   text: string;
   id: string;
+  timestamp?: Date;
 }
 
 export interface GeminiManagerConfig {
@@ -395,5 +396,5 @@ export function generateMessageId(): string {
 }
 
 export function createMessage(type: 'human' | 'gemini', text: string): Message {
-  return { type, text, id: generateMessageId() };
+  return { type, text, id: generateMessageId(), timestamp: new Date() };
 }

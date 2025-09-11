@@ -348,7 +348,7 @@ export default function BrowserView() {
       </div>
 
       {/* Status Bar - Always Visible */}
-      <div className="px-4 lg:px-6 py-3" style={{ backgroundColor: '#1a1a1a' }}>
+      <div className="px-4 lg:px-6 pb-3" style={{ backgroundColor: '#1a1a1a' }}>
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2 lg:space-x-3">
             <div className={`w-2 h-2 rounded-full ${

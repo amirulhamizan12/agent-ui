@@ -1,6 +1,6 @@
 "use client";
 import { useState, useRef, useEffect, useCallback, forwardRef, KeyboardEvent } from 'react';
-import { Sparkles, Mic, MicOff, Wifi, WifiOff, Loader2, Bot } from 'lucide-react';
+import { Mic, MicOff, Loader2 } from 'lucide-react';
 import { Base64 } from 'js-base64';
 import { 
   GeminiConnectionManager, 
@@ -8,27 +8,22 @@ import {
   ConnectionState,
   createMessage
 } from '../services/geminiTextGen';
+import { parseActionFromText } from '../services/actionParser';
+import { actionProcessor } from '../services/actionProcessor';
+import { useTask, TaskStep, ChatMessage } from '@/context/TaskContext';
+import { HumanMessage, AiMessage, TypingIndicator, EmptyState, StepMessage } from './MessageComponents';
 
 // ========== INTERFACES ==========
 interface TextWebSocket {
   sendMediaChunk: (data: string, type: string) => void;
 }
 
-interface AudioPreviewProps {
-  sharedWebSocket?: TextWebSocket | null;
-  isWebSocketConnected?: boolean;
-  onWebSocketReady?: () => void;
-}
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
   size?: 'default' | 'sm' | 'lg' | 'icon';
 }
 
-interface ConnectionStatusProps {
-  isConnected: boolean;
-  isConnecting: boolean;
-}
 
 interface ScrollAreaProps {
   children: React.ReactNode;
@@ -42,6 +37,7 @@ interface TextInputProps {
 }
 
 // ========== UI COMPONENTS ==========
+
 
 // Button Component
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -79,35 +75,6 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 
 Button.displayName = 'Button';
 
-// ConnectionStatus Component
-const ConnectionStatus = ({ isConnected, isConnecting }: ConnectionStatusProps) => {
-  const getStatusColor = () => {
-    if (isConnecting) return 'text-yellow-400';
-    if (isConnected) return 'text-green-400';
-    return 'text-red-400';
-  };
-
-  const getStatusText = () => {
-    if (isConnecting) return 'Connecting...';
-    if (isConnected) return 'Connected';
-    return 'Disconnected';
-  };
-
-  const getStatusIcon = () => {
-    if (isConnecting) return <Loader2 className="h-4 w-4 animate-spin" />;
-    if (isConnected) return <Wifi className="h-4 w-4" />;
-    return <WifiOff className="h-4 w-4" />;
-  };
-
-  return (
-    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full bg-dark-300 border ${isConnected ? 'border-green-500/30' : isConnecting ? 'border-yellow-500/30' : 'border-red-500/30'}`}>
-      {getStatusIcon()}
-      <span className={`text-sm font-medium ${getStatusColor()}`}>
-        {getStatusText()}
-      </span>
-    </div>
-  );
-};
 
 // ScrollArea Component
 const ScrollArea = forwardRef<HTMLDivElement, ScrollAreaProps>(
@@ -136,7 +103,7 @@ const UnifiedInput = ({
   placeholder = "Send Message...",
   sharedWebSocket,
   isWebSocketConnected,
-  onWebSocketReady
+  onWebSocketReady: _onWebSocketReady
 }: TextInputProps & {
   sharedWebSocket?: TextWebSocket | null;
   isWebSocketConnected?: boolean;
@@ -367,36 +334,6 @@ const UnifiedInput = ({
 };
 
 
-// Helper function to create message components
-const HumanMessage = ({ text }: { text: string }) => (
-  <div className="flex justify-end mb-4">
-    <div className="max-w-[85%] lg:max-w-[75%]">
-      <div className="bg-gradient-to-br from-orange-500 to-orange-600 text-white px-4 py-3 rounded-2xl rounded-br-md shadow-lg">
-        <div className="text-sm leading-relaxed break-words">
-          {text}
-        </div>
-      </div>
-      <div className="mt-1 text-xs text-gray-400 text-right mr-1">
-        {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-      </div>
-    </div>
-  </div>
-);
-
-const GeminiMessage = ({ text }: { text: string }) => (
-  <div className="flex justify-start mb-4">
-    <div className="max-w-[85%] lg:max-w-[75%]">
-      <div className="bg-gradient-to-br from-dark-300 to-dark-400 text-white px-4 py-3 rounded-2xl rounded-bl-md shadow-lg border border-dark-200/50">
-        <div className="text-sm leading-relaxed break-words">
-          {text}
-        </div>
-      </div>
-      <div className="mt-1 text-xs text-gray-400 text-left ml-1">
-        {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-      </div>
-    </div>
-  </div>
-);
 
 export default function AiChat() {
   // ============================================================================
@@ -417,17 +354,114 @@ export default function AiChat() {
   // Connection manager instance
   const connectionManagerRef = useRef<GeminiConnectionManager | null>(null);
 
+  // Task context for browser automation
+  const { state: taskState, dispatch: taskDispatch } = useTask();
+
+  // Create a unified message flow that combines all messages chronologically
+  const createMessageFlow = () => {
+    const allMessages = [
+      // Regular AI chat messages - use actual timestamps
+      ...messages.map(msg => ({
+        type: msg.type === 'gemini' ? 'ai' : msg.type,
+        text: msg.text,
+        id: msg.id || `msg-${Date.now()}-${Math.random()}`,
+        timestamp: msg.timestamp || new Date()
+      })),
+      // Task context messages (includes automation start, steps, and completion messages)
+      ...taskState.chatMessages.map(taskMsg => ({
+        type: taskMsg.type === 'ai' ? 'ai' : taskMsg.type === 'user' ? 'human' : taskMsg.type === 'system' ? 'step' : 'ai',
+        text: taskMsg.content,
+        id: taskMsg.id,
+        timestamp: taskMsg.timestamp
+      }))
+    ];
+
+    // Sort all messages by timestamp to ensure chronological order (older at top, newer at bottom)
+    return allMessages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+  };
+
+  const allMessages = createMessageFlow();
+
+
+
   // ============================================================================
   // UI CALLBACK HANDLERS
   // ============================================================================
 
-  const handleTextResponse = (text: string) => {
+  const handleTextResponse = async (text: string) => {
     // Show typing indicator
     setIsTyping(true);
     
-    // Create message with received text
-    const message = createMessage('gemini', text);
+    // Parse action from AI response
+    const parsedAction = parseActionFromText(text);
+    
+    // Create message with cleaned text (without action tags)
+    const message = createMessage('gemini', parsedAction.cleanedText);
     setMessages(prev => [...prev, message]);
+    
+    // Process browser action if present
+    if (parsedAction.type === 'browser' && parsedAction.command) {
+      console.log('[AiChat] Processing browser action:', parsedAction.command);
+      
+      try {
+        const result = await actionProcessor.processAction(parsedAction);
+        
+        if (result.success && result.taskId) {
+          console.log('[AiChat] Browser action successful:', {
+            taskId: result.taskId,
+            sessionId: result.sessionId,
+            sessionLiveUrl: result.sessionLiveUrl
+          });
+
+          // Start browser task with session information
+          taskDispatch({ 
+            type: 'START_TASK', 
+            taskId: result.taskId,
+            sessionId: result.sessionId || undefined
+          });
+
+          // Update session status if we have session info
+          if (result.sessionId && result.sessionLiveUrl) {
+            console.log('[AiChat] Updating session status:', {
+              sessionId: result.sessionId,
+              sessionLiveUrl: result.sessionLiveUrl
+            });
+            taskDispatch({
+              type: 'CREATE_SESSION_SUCCESS',
+              sessionId: result.sessionId,
+              sessionLiveUrl: result.sessionLiveUrl
+            });
+          }
+          
+          // Add system message about browser action to task context
+          const actionMessage: ChatMessage = {
+            id: `action-${Date.now()}`,
+            type: 'ai',
+            content: `🔧 **Executing browser action:** ${parsedAction.command}`,
+            timestamp: new Date()
+          };
+          taskDispatch({ type: 'ADD_CHAT_MESSAGE', message: actionMessage });
+        } else if (result.error) {
+          // Add error message to task context
+          const errorMessage: ChatMessage = {
+            id: `error-${Date.now()}`,
+            type: 'ai',
+            content: `❌ **Error executing browser action:** ${result.error}`,
+            timestamp: new Date()
+          };
+          taskDispatch({ type: 'ADD_CHAT_MESSAGE', message: errorMessage });
+        }
+      } catch (error) {
+        console.error('[AiChat] Error processing browser action:', error);
+        const errorMessage: ChatMessage = {
+          id: `error-${Date.now()}`,
+          type: 'ai',
+          content: `❌ **Error executing browser action:** ${error instanceof Error ? error.message : 'Unknown error'}`,
+          timestamp: new Date()
+        };
+        taskDispatch({ type: 'ADD_CHAT_MESSAGE', message: errorMessage });
+      }
+    }
     
     // Update UI state
     setIsTyping(false);
@@ -487,6 +521,20 @@ export default function AiChat() {
     };
   }, []);
 
+  // ============================================================================
+  // SCROLL TO BOTTOM WHEN MESSAGES CHANGE
+  // ============================================================================
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [allMessages]);
+
 
   return (
     <div className="w-full bg-dark-100 flex flex-col h-screen overflow-hidden">
@@ -521,9 +569,9 @@ export default function AiChat() {
             </span>
           </div>
           <div className="flex items-center space-x-4">
-            {messages.length > 0 && (
+            {allMessages.length > 0 && (
               <div className="text-gray-400 text-xs lg:text-sm">
-                {messages.length} messages
+                {allMessages.length} messages
               </div>
             )}
           </div>
@@ -536,46 +584,50 @@ export default function AiChat() {
         <div className="flex-1 bg-dark-100 mx-4 mt-4 mb-4 rounded-lg overflow-hidden flex flex-col">
           <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
             <div className="p-4 space-y-4 min-h-full">
-              {messages.length === 0 ? (
-                <div className="flex justify-center items-center h-full min-h-[400px]">
-                  <div className="text-center">
-                    <div className="w-16 h-16 mx-auto mb-6 bg-gradient-to-br from-orange-500/20 to-orange-600/20 rounded-full flex items-center justify-center">
-                      <Bot className="w-8 h-8 text-orange-400" />
-                    </div>
-                    <h3 className="text-lg font-semibold text-gray-300 mb-2">Welcome to AI Chat</h3>
-                    <p className="text-gray-400 text-sm max-w-md mx-auto leading-relaxed">
-                      Start a conversation by typing a message or using voice input. I'm here to help!
-                    </p>
-                  </div>
-                </div>
+              {allMessages.length === 0 ? (
+                <EmptyState />
               ) : (
-                messages.map((message, index) => (
-                  message.type === 'human' ? (
-                    <HumanMessage key={message.id || `msg-${index}`} text={message.text} />
-                  ) : (
-                    <GeminiMessage
-                      key={message.id || `msg-${index}`}
-                      text={message.text}
-                    />
-                  )
-                ))
+                <>
+                  {allMessages.map((message, index) => {
+                    // Create a unique key that combines ID and timestamp to prevent duplicates
+                    const uniqueKey = `${message.id}-${message.timestamp.getTime()}-${index}`;
+                    
+                    switch (message.type) {
+                      case 'human':
+                        return <HumanMessage key={uniqueKey} text={message.text || ''} timestamp={message.timestamp} />;
+                      case 'ai':
+                        return <AiMessage key={uniqueKey} text={message.text || ''} timestamp={message.timestamp} />;
+                      case 'step':
+                        // For step messages, we need to parse the step info from the text
+                        const stepText = message.text || '';
+                        const stepMatch = stepText.match(/^Step (\d+): (.+)$/);
+                        if (stepMatch) {
+                          const stepNumber = parseInt(stepMatch[1]);
+                          const stepDescription = stepMatch[2];
+                          // Create a mock step object for display
+                          const mockStep: TaskStep = {
+                            number: stepNumber,
+                            memory: '',
+                            evaluationPreviousGoal: stepDescription,
+                            nextGoal: stepDescription,
+                            url: '',
+                            actions: [],
+                            screenshotUrl: ''
+                          };
+                          return <StepMessage key={uniqueKey} step={mockStep} stepNumber={stepNumber} timestamp={message.timestamp} />;
+                        }
+                        // Fallback to regular message if parsing fails
+                        return <AiMessage key={uniqueKey} text={stepText} timestamp={message.timestamp} />;
+                      default:
+                        return null;
+                    }
+                  })}
+                </>
               )}
               {(isTyping || isTextLoading) && (
-                <div className="flex justify-start mb-4">
-                  <div className="max-w-[85%] lg:max-w-[75%]">
-                    <div className="bg-gradient-to-br from-dark-300 to-dark-400 text-white px-4 py-3 rounded-2xl rounded-bl-md shadow-lg border border-dark-200/50">
-                      <div className="flex items-center gap-3">
-                        <div className="flex space-x-1">
-                          <div className="w-2 h-2 bg-orange-400 rounded-full animate-bounce"></div>
-                          <div className="w-2 h-2 bg-orange-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
-                          <div className="w-2 h-2 bg-orange-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
-                        </div>
-                        <span className="text-sm text-gray-300 font-medium">AI is thinking...</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <TypingIndicator />
               )}
+              <div ref={messagesEndRef} />
             </div>
           </div>
         </div>

@@ -23,8 +23,29 @@ const generateSummaryFromOutput = (taskData: { output?: string | null }): string
   if (taskData.output) {
     try {
       const parsedOutput = typeof taskData.output === 'string' ? JSON.parse(taskData.output) : taskData.output
+      
+      // Generate specific summaries based on output content
       if (parsedOutput.company_overview?.name) {
         return generateMockSummary(`analysis of ${parsedOutput.company_overview.name}`)
+      }
+      
+      if (parsedOutput.products && Array.isArray(parsedOutput.products)) {
+        return generateMockSummary(`product search that found ${parsedOutput.products.length} items`)
+      }
+      
+      if (parsedOutput.news && Array.isArray(parsedOutput.news)) {
+        return generateMockSummary(`news search that found ${parsedOutput.news.length} articles`)
+      }
+      
+      // Check for any search results
+      if (parsedOutput.search_results && Array.isArray(parsedOutput.search_results)) {
+        return generateMockSummary(`search that found ${parsedOutput.search_results.length} results`)
+      }
+      
+      // Check for any data extraction
+      if (Object.keys(parsedOutput).length > 0) {
+        const dataTypes = Object.keys(parsedOutput).join(', ')
+        return generateMockSummary(`data extraction covering: ${dataTypes}`)
       }
     } catch (error) {
       console.log('Could not parse structured output, using generic summary')
@@ -33,30 +54,6 @@ const generateSummaryFromOutput = (taskData: { output?: string | null }): string
   return generateMockSummary('the requested task')
 }
 
-const createStepMessage = (step: { evaluation_previous_goal?: string; evaluationPreviousGoal?: string; next_goal?: string; nextGoal?: string; url?: string; id?: string }, stepNumber: number): ChatMessage => {
-  const stepDescription = step.evaluation_previous_goal || step.evaluationPreviousGoal || step.next_goal || step.nextGoal || 'Performing action'
-  
-  let urlDisplay = ''
-  if (step.url) {
-    try {
-      const urlObj = new URL(step.url)
-      const domain = urlObj.hostname
-      const path = urlObj.pathname
-      const shortUrl = path.length > 30 ? `${path.substring(0, 30)}...` : path
-      urlDisplay = `\n\n${domain}${shortUrl}`
-    } catch {
-      const shortUrl = step.url.length > 50 ? `${step.url.substring(0, 50)}...` : step.url
-      urlDisplay = `\n\n${shortUrl}`
-    }
-  }
-  
-  return {
-    id: `step-${step.id || stepNumber}-${Date.now()}`,
-    type: 'ai',
-    content: `**Step ${stepNumber}**\n${stepDescription}${urlDisplay}`,
-    timestamp: new Date()
-  }
-}
 
 // ===== TASK EXECUTION HOOK =====
 export function useTaskExecution() {
@@ -81,10 +78,16 @@ export function useTaskExecution() {
         
         // ===== HANDLE NEW STEPS =====
         if (currentStepCount > lastStepCountRef.current) {
+          // Add individual step messages for new steps
           const newSteps = currentSteps.slice(lastStepCountRef.current)
-          newSteps.forEach((step: any, index: number) => {
+          newSteps.forEach((step, index) => {
             const stepNumber = lastStepCountRef.current + index + 1
-            const stepMessage = createStepMessage(step, stepNumber)
+            const stepMessage: ChatMessage = {
+              id: `step-${Date.now()}-${stepNumber}-${index}`,
+              type: 'system',
+              content: `Step ${stepNumber}: ${step.evaluationPreviousGoal || step.nextGoal || 'Performing action'}`,
+              timestamp: new Date()
+            }
             dispatch({ type: 'ADD_CHAT_MESSAGE', message: stepMessage })
           })
           lastStepCountRef.current = currentStepCount
@@ -108,10 +111,51 @@ export function useTaskExecution() {
           clearPolling()
           const summary = generateSummaryFromOutput(taskData)
           
+          // Create completion message with output
+          let completionContent = '✅ **Task Completed Successfully!**\n\nThe automation task has finished executing all steps.'
+          
+          // Add output if available
+          if (taskData.output) {
+            try {
+              const parsedOutput = typeof taskData.output === 'string' ? JSON.parse(taskData.output) : taskData.output
+              
+              // Handle different output formats
+              if (typeof parsedOutput === 'object' && parsedOutput !== null) {
+                completionContent += '\n\n📋 **Results:**\n'
+                
+                // Display structured output
+                if (parsedOutput.company_overview?.name) {
+                  completionContent += `• **Company:** ${parsedOutput.company_overview.name}\n`
+                }
+                if (parsedOutput.company_overview?.description) {
+                  completionContent += `• **Description:** ${parsedOutput.company_overview.description}\n`
+                }
+                if (parsedOutput.products && Array.isArray(parsedOutput.products)) {
+                  completionContent += `• **Products Found:** ${parsedOutput.products.length} items\n`
+                }
+                if (parsedOutput.news && Array.isArray(parsedOutput.news)) {
+                  completionContent += `• **News Articles:** ${parsedOutput.news.length} articles\n`
+                }
+                
+                // Add any other relevant fields
+                Object.keys(parsedOutput).forEach(key => {
+                  if (!['company_overview', 'products', 'news'].includes(key) && parsedOutput[key]) {
+                    completionContent += `• **${key.charAt(0).toUpperCase() + key.slice(1)}:** ${parsedOutput[key]}\n`
+                  }
+                })
+              } else if (typeof parsedOutput === 'string') {
+                completionContent += `\n\n📋 **Results:**\n${parsedOutput}`
+              }
+            } catch (error) {
+              // If parsing fails, display raw output
+              completionContent += `\n\n📋 **Results:**\n${taskData.output}`
+            }
+          }
+          
           const completionMessage: ChatMessage = {
             id: `completion-${Date.now()}`,
             type: 'ai',
-            content: '✅ **Task Completed Successfully!**\n\nThe automation task has finished executing all steps.',
+            content: completionContent,
             timestamp: new Date()
           }
           dispatch({ type: 'ADD_CHAT_MESSAGE', message: completionMessage })
@@ -122,12 +166,33 @@ export function useTaskExecution() {
         if (taskData.status === 'failed' || taskData.status === 'stopped') {
           clearPolling()
           
+          let statusContent = taskData.status === 'failed' 
+            ? '❌ **Task Failed**\n\nThe automation task encountered an error and could not complete.'
+            : '⏹️ **Task Stopped**\n\nThe automation task was stopped.'
+          
+          // Add output if available, even for failed tasks
+          if (taskData.output) {
+            statusContent += '\n\n📋 **Partial Results:**\n'
+            try {
+              const parsedOutput = typeof taskData.output === 'string' ? JSON.parse(taskData.output) : taskData.output
+              if (typeof parsedOutput === 'object' && parsedOutput !== null) {
+                Object.keys(parsedOutput).forEach(key => {
+                  if (parsedOutput[key]) {
+                    statusContent += `• **${key.charAt(0).toUpperCase() + key.slice(1)}:** ${parsedOutput[key]}\n`
+                  }
+                })
+              } else {
+                statusContent += taskData.output
+              }
+            } catch (error) {
+              statusContent += taskData.output
+            }
+          }
+          
           const statusMessage: ChatMessage = {
             id: `status-${Date.now()}`,
             type: 'system',
-            content: taskData.status === 'failed' 
-              ? '❌ **Task Failed**\n\nThe automation task encountered an error and could not complete.'
-              : '⏹️ **Task Stopped**\n\nThe automation task was stopped.',
+            content: statusContent,
             timestamp: new Date()
           }
           dispatch({ type: 'ADD_CHAT_MESSAGE', message: statusMessage })
