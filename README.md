@@ -1,3 +1,5 @@
+<img width="1661" height="403" alt="Browser Use" src="https://github.com/user-attachments/assets/a56f8da9-cbe3-46ed-a0c2-a60606609c6f" />
+
 # Realtime Studio - #nicehack69
 
 > **The Future of Human-Computer Interaction is Here**  
